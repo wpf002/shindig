@@ -144,3 +144,76 @@ export async function fetchPinImage(url: string): Promise<Buffer> {
   if (buf.length > MAX_UPLOAD_BYTES) throw new PinterestError("Image too large", 413);
   return buf;
 }
+
+// ---- Public boards by link (no OAuth) ----
+// Every public board has an RSS feed of its recent pins. We only ever request
+// www.pinterest.com with a path we rebuilt from validated parts.
+
+const PIN_HOST = /^([a-z]{2}\.)?(www\.)?pinterest\.(com|ca|co\.uk|com\.au|de|fr|es|it|com\.mx|nz|ie|at|ch|pt|jp|se|dk|nl)$/;
+const SHORT_HOSTS = new Set(["pin.it"]);
+const RESERVED = new Set(["pin", "pins", "search", "ideas", "today", "settings", "business", "_", "explore", "login", "resource"]);
+const USER_RE = /^[A-Za-z0-9_.-]{1,40}$/;
+const BOARD_RE = /^[A-Za-z0-9_%.-]{1,150}$/;
+
+export interface PublicBoard {
+  user: string;
+  slug: string;
+}
+
+function boardFromUrl(u: URL): PublicBoard | null {
+  if (!PIN_HOST.test(u.hostname)) return null;
+  const [user, slug] = u.pathname.split("/").filter(Boolean);
+  if (!user || !slug || RESERVED.has(user.toLowerCase())) return null;
+  const s = slug.replace(/\.rss$/, "");
+  if (!USER_RE.test(user) || !BOARD_RE.test(s)) return null;
+  return { user, slug: s };
+}
+
+/** Accepts a board URL, a pin.it short link, or "user/board". */
+export async function resolveBoardLink(input: string): Promise<PublicBoard> {
+  const raw = input.trim();
+  const bad = () => new PinterestError("Paste a link to a public Pinterest board", 400);
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(raw) ? raw : /^[^/\s]+\/[^/\s]+\/?$/.test(raw) ? `https://www.pinterest.com/${raw}` : `https://${raw}`);
+  } catch {
+    throw bad();
+  }
+  // Follow pin.it short links by hand, staying on Pinterest hosts.
+  for (let hop = 0; SHORT_HOSTS.has(u.hostname) || u.hostname === "api.pinterest.com"; hop++) {
+    if (hop >= 4) throw bad();
+    const res = await fetch(u, { redirect: "manual", signal: AbortSignal.timeout(10_000), headers: { "User-Agent": UA } });
+    const loc = res.headers.get("location");
+    if (!loc) throw bad();
+    u = new URL(loc, u);
+    if (u.protocol !== "https:" || !(SHORT_HOSTS.has(u.hostname) || u.hostname === "api.pinterest.com" || PIN_HOST.test(u.hostname))) throw bad();
+  }
+  const b = boardFromUrl(u);
+  if (!b) throw bad();
+  return b;
+}
+
+const UA = "Mozilla/5.0 (compatible; Shindig/1.0)";
+
+const decode = (s: string) =>
+  s.replace(/&amp;/g, "&").replace(/&apos;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+
+export async function publicBoardImages(b: PublicBoard): Promise<{ name: string; urls: string[] }> {
+  const res = await fetch(`https://www.pinterest.com/${b.user}/${b.slug}.rss`, {
+    redirect: "error",
+    signal: AbortSignal.timeout(15_000),
+    headers: { "User-Agent": UA },
+  });
+  if (res.status === 404) throw new PinterestError("Board not found. Check the link, and make sure the board is public.", 404);
+  if (!res.ok) throw new PinterestError(`Pinterest returned ${res.status}`, 502);
+  const xml = (await res.text()).slice(0, 2_000_000);
+  const name = decode(xml.match(/<channel>\s*<title>([^<]{1,200})<\/title>/)?.[1] ?? b.slug.replace(/-/g, " "));
+  const urls = [
+    ...new Set(
+      [...xml.matchAll(/https:\/\/i\.pinimg\.com\/\d+x\/[0-9a-f/]+\.(?:jpg|jpeg|png|webp)/gi)].map((m) =>
+        m[0].replace(/\/\d+x\//, "/736x/"),
+      ),
+    ),
+  ];
+  return { name, urls };
+}

@@ -467,3 +467,6 @@ input[type="date"] { color-scheme: light; accent-color: var(--accent); }
 .datepick-grid .day.today { box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent-ink); font-weight: 600; }
 .datepick-grid .day.sel { background: var(--accent); color: var(--veil); font-weight: 600; box-shadow: none; }
 .datepick-foot { display: flex; justify-content: space-between; margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); }
+.board-link { display: flex; gap: var(--s2); margin-bottom: var(--s3); }
+.board-link input { flex: 1; min-width: 0; }
+.board-link .btn { flex: none; }

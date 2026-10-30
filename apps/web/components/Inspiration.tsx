@@ -17,6 +17,7 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState(false);
+  const [link, setLink] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -39,6 +40,24 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
       const r = await api<{ plan: Plan }>(`/plans/${plan.id}/inspiration/pinterest`, {
         method: "POST",
         json: { boardId: b.id, boardName: b.name },
+      });
+      onRead(r.plan);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function readLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!link.trim()) return;
+    setBusy("Reading Board…");
+    setError(null);
+    try {
+      const r = await api<{ plan: Plan }>(`/plans/${plan.id}/inspiration/board-link`, {
+        method: "POST",
+        json: { url: link.trim() },
       });
       onRead(r.plan);
     } catch (e) {
@@ -89,15 +108,13 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
     );
   }
 
-  const pinOff = status !== null && !status.enabled;
 
   return (
     <div className="stack" style={{ ["--gap" as string]: "16px" }}>
       {notice && <p className={notice.startsWith("Pinterest is connected") ? "ok" : "error"}>{notice}</p>}
       {error && <p className="error">{error}</p>}
 
-      <div className={`intake ${pinOff ? "solo" : ""}`}>
-      {!pinOff && (
+      <div className="intake">
       <section className="card pad-lg">
         <div className="panel-title">
           <h3 className="row" style={{ gap: 10 }}>
@@ -110,40 +127,51 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
             </button>
           )}
         </div>
-        {!status ? (
-          <span className="spinner" />
-        ) : !status.connected ? (
+        <form className="board-link" onSubmit={readLink}>
+          <input
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder="pinterest.com/you/wedding-ideas"
+            aria-label="Board Link"
+            title="Any public board. Copy the link from Share → Copy Link."
+          />
+          <button className="btn accent" disabled={!link.trim()}>
+            Read Board
+          </button>
+        </form>
+        {status?.enabled && !status.connected && (
           <a
-            className="btn accent"
+            className="linkish small"
             href={`/api/pinterest/connect?planId=${plan.id}`}
-            title="Shindig reads boards live and keeps the analysis, not your pins."
+            title="Sign in to pick from your boards, including private ones."
           >
-            Connect Pinterest
+            Or Connect Your Account
           </a>
-        ) : boards === null ? (
-          <span className="spinner" />
-        ) : boards.length === 0 ? (
-          <p className="muted">No Boards</p>
-        ) : (
-          <div className="boards">
-            {boards.map((b) => (
-              <button key={b.id} className="board" onClick={() => readBoard(b)} disabled={b.pinCount === 0}>
-                {b.coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="cover" src={b.coverUrl} alt="" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="cover" />
-                )}
-                <div className="meta-b">
-                  <strong>{b.name}</strong>
-                  <div className="muted">{b.pinCount} Pins</div>
-                </div>
-              </button>
-            ))}
-          </div>
         )}
+        {status?.connected &&
+          (boards === null ? (
+            <span className="spinner" />
+          ) : boards.length === 0 ? (
+            <p className="muted">No Boards</p>
+          ) : (
+            <div className="boards">
+              {boards.map((b) => (
+                <button key={b.id} className="board" onClick={() => readBoard(b)} disabled={b.pinCount === 0}>
+                  {b.coverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="cover" src={b.coverUrl} alt="" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="cover" />
+                  )}
+                  <div className="meta-b">
+                    <strong>{b.name}</strong>
+                    <div className="muted">{b.pinCount} Pins</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ))}
       </section>
-      )}
 
       <section className="card pad-lg">
         <div className="panel-title">

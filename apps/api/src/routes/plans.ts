@@ -15,7 +15,7 @@ import {
   type VendorFacts,
 } from "@shindig/core";
 import { requireUser } from "../lib/auth.js";
-import { boardImageUrls, fetchPinImage } from "../lib/pinterest.js";
+import { boardImageUrls, fetchPinImage, publicBoardImages, resolveBoardLink } from "../lib/pinterest.js";
 import { ID_RE, mapLimit, readUploadedImages } from "../lib/util.js";
 import { normalizeImage } from "../lib/images.js";
 import { analyzeImages, MAX_IMAGES_PER_READ, sampleEvenly } from "../vision/index.js";
@@ -157,6 +157,36 @@ export async function planRoutes(app: FastifyInstance) {
     const updated = await prisma.plan.update({
       where: { id: plan.id },
       data: { brief, briefSource: "pinterest", briefLabel: body.boardName },
+    });
+    return { plan: { ...updated, brief } };
+  });
+
+  app.post("/plans/:id/inspiration/board-link", readLimit, async (req, reply) => {
+    const plan = await ownedPlan(req, reply);
+    if (!plan) return;
+    const body = z.object({ url: z.string().min(3).max(500) }).parse(req.body);
+    const board = await resolveBoardLink(body.url);
+    const { name, urls } = await publicBoardImages(board);
+    if (urls.length < 3) return reply.code(400).send({ error: "That board needs at least 3 image pins" });
+
+    // Same rule as OAuth boards: fetched into memory, analyzed, dropped.
+    const picked = sampleEvenly(urls, MAX_IMAGES_PER_READ);
+    const images = (
+      await mapLimit(picked, 6, async (u) => {
+        try {
+          return (await normalizeImage(await fetchPinImage(u), 768)).data;
+        } catch {
+          return null;
+        }
+      })
+    ).filter((b): b is Buffer => b !== null);
+    if (images.length < 3) return reply.code(502).send({ error: "Couldn't load enough pins from that board" });
+
+    const brief = await analyzeImages(images, vision(), name);
+    brief.imageCount = urls.length;
+    const updated = await prisma.plan.update({
+      where: { id: plan.id },
+      data: { brief, briefSource: "pinterest", briefLabel: name },
     });
     return { plan: { ...updated, brief } };
   });

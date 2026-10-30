@@ -68,7 +68,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
       req.log.warn({ err }, "pinterest error");
       if (err.status === 401) return reply.code(409).send({ error: "Pinterest access expired. Reconnect Pinterest." });
       if (err.status === 503) return reply.code(503).send({ error: "Pinterest isn't set up on this server yet." });
-      if (err.status === 400) return reply.code(400).send({ error: err.message });
+      if (err.status === 400 || err.status === 404) return reply.code(err.status).send({ error: err.message });
       return reply.code(502).send({ error: "Pinterest didn't respond. Try again in a minute." });
     }
     const e = err as Error & { statusCode?: number };
