@@ -66,6 +66,13 @@ export interface PublicVendor {
   isDemo: boolean;
   verified: boolean;
   images: Array<{ id: string; url: string; width: number; height: number; credit: string | null }>;
+  /** Imported from Google and not claimed yet. Contact goes through their website or phone. */
+  listed: boolean;
+  priceEstimated: boolean;
+  address: string | null;
+  phone: string | null;
+  rating: number | null;
+  ratingCount: number | null;
 }
 
 export interface MatchRow extends Match {

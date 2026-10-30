@@ -14,6 +14,7 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default("./uploads"),
   ANTHROPIC_API_KEY: z.string().optional().transform((v) => v || undefined),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5-5"),
+  GOOGLE_PLACES_API_KEY: z.string().optional().transform((v) => v || undefined),
   PINTEREST_CLIENT_ID: z.string().optional().transform((v) => v || undefined),
   PINTEREST_CLIENT_SECRET: z.string().optional().transform((v) => v || undefined),
   PINTEREST_REDIRECT_URI: z.string().url().optional().or(z.literal("").transform(() => undefined)),

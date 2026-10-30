@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { CATEGORY_LABELS, getCity, STYLE_LABELS, type Match } from "@shindig/core";
 import { api, usd, type PublicVendor } from "@/lib/api";
+import { Stars } from "@/components/Matches";
 import { Swatches } from "@/components/Swatches";
 import { Ring } from "@/components/Ring";
 
@@ -95,13 +96,38 @@ function VendorView() {
               <dd>{getCity(v.cityId)?.name}</dd>
             </div>
             <div>
-              <dt>Price</dt>
+              <dt>{v.priceEstimated ? "Est. Price" : "Price"}</dt>
               <dd>{price}</dd>
             </div>
-            <div>
-              <dt>Travels</dt>
-              <dd>{v.serviceRadiusMi} mi</dd>
-            </div>
+            {v.listed ? (
+              v.rating != null && (
+                <div>
+                  <dt>Google</dt>
+                  <dd>
+                    <Stars vendor={v} />
+                  </dd>
+                </div>
+              )
+            ) : (
+              <div>
+                <dt>Travels</dt>
+                <dd>{v.serviceRadiusMi} mi</dd>
+              </div>
+            )}
+            {v.address && (
+              <div>
+                <dt>Address</dt>
+                <dd>{v.address}</dd>
+              </div>
+            )}
+            {v.phone && (
+              <div>
+                <dt>Phone</dt>
+                <dd>
+                  <a href={`tel:${v.phone.replace(/[^0-9+]/g, "")}`}>{v.phone}</a>
+                </dd>
+              </div>
+            )}
             {v.capacityMax ? (
               <div>
                 <dt>Capacity</dt>

@@ -54,6 +54,17 @@ export function vendorFacts(v: Vendor): VendorFacts {
   };
 }
 
+export interface PlacePhoto {
+  name: string;
+  width: number;
+  height: number;
+  author: string | null;
+}
+
+export function placePhotos(v: Pick<Vendor, "placePhotos">): PlacePhoto[] {
+  return Array.isArray(v.placePhotos) ? (v.placePhotos as unknown as PlacePhoto[]) : [];
+}
+
 export function publicVendor(
   v: Vendor & { images?: Array<{ id: string; fileName: string; width: number; height: number; credit?: string | null }> },
 ) {
@@ -78,7 +89,23 @@ export function publicVendor(
     website: v.website,
     isDemo: v.isDemo,
     verified: v.verified,
-    images: (v.images ?? []).map((i) => ({ id: i.id, url: `/api/images/${i.fileName}`, width: i.width, height: i.height, credit: i.credit ?? null })),
+    images: [
+      ...(v.images ?? []).map((i) => ({ id: i.id, url: `/api/images/${i.fileName}`, width: i.width, height: i.height, credit: i.credit ?? null })),
+      ...placePhotos(v).map((p, idx) => ({
+        id: `${v.id}-g${idx}`,
+        url: `/api/place-photos/${v.id}/${idx}`,
+        width: p.width,
+        height: p.height,
+        credit: p.author ? `${p.author} via Google` : "Google",
+      })),
+    ],
+    // Imported from Google and not yet claimed: no inbox, so the UI links out instead.
+    listed: Boolean(v.placeId && !v.ownerId),
+    priceEstimated: v.priceEstimated,
+    address: v.address,
+    phone: v.phone,
+    rating: v.rating,
+    ratingCount: v.ratingCount,
   };
 }
 
@@ -335,6 +362,7 @@ export async function planRoutes(app: FastifyInstance) {
     const vendor = await prisma.vendor.findFirst({ where: { id: body.vendorId, active: true } });
     if (!vendor) return reply.code(404).send({ error: "Vendor not found" });
     if (!plan.categories.includes(vendor.category)) return reply.code(400).send({ error: "That vendor isn't in this plan's categories" });
+    if (vendor.placeId && !vendor.ownerId) return reply.code(409).send({ error: "This vendor hasn't joined yet. Contact them directly." });
     const existing = await prisma.inquiry.findUnique({ where: { planId_vendorId: { planId: plan.id, vendorId: vendor.id } } });
     if (existing) return reply.code(409).send({ error: "You already asked this vendor" });
     const inquiry = await prisma.inquiry.create({

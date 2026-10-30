@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CATEGORY_LABELS, colorName, EVENT_TYPE_LABELS, getCity, STYLE_LABELS, type Category, type EventType } from "@shindig/core";
 import { api, type SharedPlan } from "@/lib/api";
-import { MatchVisual } from "@/components/Matches";
+import { MatchVisual, Stars } from "@/components/Matches";
 import { Ring } from "@/components/Ring";
 
 export default function SharePage() {
@@ -111,7 +111,7 @@ export default function SharePage() {
             current.matches.map((m, idx) => (
               <article key={m.vendor.id} className="match" style={{ animationDelay: `${idx * 50}ms` }}>
                 <MatchVisual vendor={m.vendor} />
-                <div>
+                <div className="match-body">
                   <div className="row" style={{ gap: 8 }}>
                     <h3>{m.vendor.name}</h3>
                     {m.saved && <span className="badge accent">Shortlisted</span>}
@@ -119,14 +119,15 @@ export default function SharePage() {
                   </div>
                   <div className="meta" style={{ marginTop: 4 }}>
                     <span>{getCity(m.vendor.cityId)?.name}</span>
+                    {m.vendor.rating != null && <span><Stars vendor={m.vendor} /></span>}
                     <span>{m.vendor.styles.slice(0, 3).map((s) => STYLE_LABELS[s]).join(", ")}</span>
                   </div>
-                  <p className="small muted" style={{ marginTop: 8 }}>
+                  <p className="small muted clamp-2" style={{ marginTop: 8 }}>
                     {m.vendor.description}
                   </p>
                   <ul className="why">
-                    {m.reasons.map((r) => (
-                      <li key={r}>{r}</li>
+                    {m.reasons.slice(0, 3).map((r) => (
+                      <li key={r} title={r}>{r}</li>
                     ))}
                   </ul>
                 </div>

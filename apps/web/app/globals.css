@@ -317,6 +317,15 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .match { display: grid; grid-template-columns: 132px 1fr auto; gap: var(--s5); padding: var(--s4); border-radius: var(--r-lg); background: var(--veil); border: 1px solid var(--line); transition: box-shadow .2s, border-color .2s, transform .2s var(--ease); animation: rise .6s var(--ease) both; }
 .match:hover { box-shadow: var(--shadow); border-color: var(--line-2); }
 .match + .match { margin-top: var(--s3); }
+/* Fixed card height: one meta line, three reason lines, actions pinned to the bottom. */
+.match-body { display: flex; flex-direction: column; min-width: 0; }
+.match-body > .row:first-child { flex-wrap: nowrap; min-width: 0; }
+.match-body h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.match-body .meta { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+.match-body .why { height: calc(3 * (1.45em + 4px)); }
+.match-body .why li { line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-body .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 3em; line-height: 1.5; }
+.match-actions { margin-top: auto; padding-top: 14px; }
 .match-visual { position: relative; width: 132px; height: 132px; border-radius: var(--r); overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; background: var(--paper-2); }
 .match-visual img { width: 132px; height: 132px; object-fit: cover; grid-column: 1 / -1; grid-row: 1 / span 2; }
 .photo-count { position: absolute; left: 6px; bottom: 6px; font-size: .66rem; font-weight: 600; letter-spacing: .04em; color: #fff; background: rgba(20,20,20,.55); padding: 2px 7px; border-radius: 999px; }
@@ -329,6 +338,9 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .match .side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: var(--s3); }
 .match .cost { font-size: .82rem; color: var(--smoke); text-align: right; font-variant-numeric: tabular-nums; }
 .match .cost b { display: block; color: var(--ink); font-size: .95rem; }
+.match .cost .est { font-weight: 500; color: var(--smoke); font-size: .78rem; margin-right: 5px; }
+.stars { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.stars .muted { color: var(--smoke); }
 .why { list-style: none; padding: 0; margin: 10px 0 0; font-size: 0.88rem; color: var(--ink-2); }
 .why li { padding-left: 20px; position: relative; margin-top: 4px; }
 .why li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 9px; height: 5px; border-left: 2px solid var(--moss); border-bottom: 2px solid var(--moss); transform: rotate(-45deg); }

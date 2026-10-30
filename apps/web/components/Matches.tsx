@@ -18,6 +18,16 @@ import { Ring } from "./Ring";
 const FIT_LABEL = { under: "Under Budget", within: "In Budget", stretch: "A Stretch", over: "Over Budget" } as const;
 const FIT_BADGE = { under: "moss", within: "moss", stretch: "amber", over: "accent" } as const;
 
+export function Stars({ vendor }: { vendor: PublicVendor }) {
+  if (vendor.rating == null) return null;
+  return (
+    <span className="stars" title={`${vendor.ratingCount ?? 0} Google reviews`}>
+      ★ {vendor.rating.toFixed(1)}
+      <span className="muted"> ({(vendor.ratingCount ?? 0).toLocaleString("en-US")})</span>
+    </span>
+  );
+}
+
 export function MatchVisual({ vendor }: { vendor: PublicVendor }) {
   const img = vendor.images[0];
   return (
@@ -90,7 +100,7 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
         current.matches.map((m, idx) => (
           <article key={m.vendor.id} className="match" style={{ animationDelay: `${idx * 50}ms` }}>
             <MatchVisual vendor={m.vendor} />
-            <div>
+            <div className="match-body">
               <div className="row" style={{ gap: 8 }}>
                 <h3>
                   <Link href={`/vendors/${m.vendor.id}?plan=${plan.id}`}>
@@ -102,21 +112,35 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
               </div>
               <div className="meta" style={{ marginTop: 4 }}>
                 <span>{getCity(m.vendor.cityId)?.name}</span>
+                {m.vendor.rating != null && <span><Stars vendor={m.vendor} /></span>}
                 <span>{m.vendor.styles.slice(0, 3).map((s) => STYLE_LABELS[s]).join(", ")}</span>
               </div>
               <ul className="why">
-                {m.reasons.map((r) => (
-                  <li key={r}>{r}</li>
+                {m.reasons.slice(0, m.caveats.length ? 2 : 3).map((r) => (
+                  <li key={r} title={r}>{r}</li>
                 ))}
-                {m.caveats.map((r) => (
-                  <li key={r} className="caveat">
+                {m.caveats.slice(0, 1).map((r) => (
+                  <li key={r} className="caveat" title={r}>
                     {r}
                   </li>
                 ))}
               </ul>
-              <div className="row" style={{ marginTop: 14, gap: 8 }}>
+              <div className="row match-actions" style={{ gap: 8 }}>
                 {m.inquiry ? (
                   <span className="badge moss">{m.inquiry === "sent" ? "Asked" : m.inquiry === "replied" ? "Replied" : "Declined"}</span>
+                ) : m.vendor.listed ? (
+                  <>
+                    {m.vendor.website && (
+                      <a className="btn sm accent" href={m.vendor.website} target="_blank" rel="noopener noreferrer nofollow">
+                        Website
+                      </a>
+                    )}
+                    {m.vendor.phone && (
+                      <a className={`btn sm ${m.vendor.website ? "ghost" : "accent"}`} href={`tel:${m.vendor.phone.replace(/[^0-9+]/g, "")}`}>
+                        Call
+                      </a>
+                    )}
+                  </>
                 ) : (
                   <button className="btn sm accent" onClick={() => setAsking(m)}>
                     Check Date
@@ -130,7 +154,8 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
             <div className="side">
               <Ring value={m.score} size={60} />
               <div className="cost">
-                <b>
+                <b title={m.vendor.priceEstimated ? "Typical range for the area. This vendor hasn't set prices." : undefined}>
+                  {m.vendor.priceEstimated && <span className="est">Est.</span>}
                   {usd(m.estimatedCost.low)}
                   {m.estimatedCost.high !== m.estimatedCost.low ? `–${usd(m.estimatedCost.high)}` : ""}
                 </b>

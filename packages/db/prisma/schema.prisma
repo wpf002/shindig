@@ -111,6 +111,16 @@ model Vendor {
   isDemo          Boolean  @default(false)
   verified        Boolean  @default(false)
   active          Boolean  @default(true)
+  /// Google Places listing this vendor was imported from. Unclaimed until ownerId is set.
+  placeId         String?  @unique
+  address         String?
+  phone           String?
+  rating          Float?
+  ratingCount     Int?
+  /// Google photo resource names and author credits. Served through the API, never stored as files.
+  placePhotos     Json?
+  /// Price range is a category default, not the vendor's own number.
+  priceEstimated  Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
