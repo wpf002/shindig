@@ -435,3 +435,35 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   .gallery:not(.swatch-only) > :nth-child(n + 4) { display: none; }
   .nav-links { gap: var(--s4); }
 }
+
+/* Date picker */
+input[type="date"] { color-scheme: light; accent-color: var(--accent); }
+.datepick { position: relative; }
+.datepick-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--s2);
+  font: inherit; color: var(--ink); background: var(--veil); text-align: left; cursor: pointer;
+  border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 11px 13px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.datepick-trigger.empty { color: color-mix(in srgb, var(--smoke) 75%, transparent); }
+.datepick-trigger svg { color: var(--accent); flex: none; }
+.datepick-trigger:hover { border-color: var(--smoke); }
+.datepick-trigger:focus-visible, .datepick-trigger[aria-expanded="true"] { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); }
+.datepick-pop {
+  position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; width: 296px;
+  background: var(--veil); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg);
+  padding: var(--s4); animation: pop-in .16s var(--ease);
+}
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } }
+.datepick-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s3); }
+.datepick-head strong { font-family: var(--display); font-size: 1.05rem; font-weight: 500; }
+.datepick-nav { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.datepick-nav:hover { border-color: var(--accent); color: var(--accent); }
+.datepick-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.datepick-grid .dow { text-align: center; font-size: .7rem; font-weight: 600; letter-spacing: .04em; color: var(--smoke); padding-bottom: 6px; }
+.datepick-grid .day { aspect-ratio: 1; border: 0; border-radius: 50%; background: transparent; font: inherit; font-size: .88rem; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+.datepick-grid .day:hover { background: var(--accent-wash); color: var(--accent-ink); }
+.datepick-grid .day.past { color: var(--smoke); }
+.datepick-grid .day.today { box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent-ink); font-weight: 600; }
+.datepick-grid .day.sel { background: var(--accent); color: var(--veil); font-weight: 600; box-shadow: none; }
+.datepick-foot { display: flex; justify-content: space-between; margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); }

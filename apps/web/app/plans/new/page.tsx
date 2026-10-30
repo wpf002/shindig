@@ -15,6 +15,7 @@ import {
 } from "@shindig/core";
 import { api, usd, type Plan } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
+import { DatePicker } from "@/components/DatePicker";
 
 const DEFAULTS: Record<EventType, Category[]> = {
   wedding: ["venue", "planner", "photographer", "caterer", "florist", "dj"],
@@ -101,10 +102,10 @@ export default function NewPlan() {
           </label>
 
           <div className="grid-2">
-            <label className="field">
-              <span>Date</span>
-              <input name="date" type="date" />
-            </label>
+            <div className="field">
+              <label htmlFor="plan-date" className="label">Date</label>
+              <DatePicker name="date" id="plan-date" />
+            </div>
             <label className="field">
               <span>City</span>
               <select name="cityId" defaultValue="dallas">
