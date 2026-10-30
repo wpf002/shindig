@@ -2,11 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { prisma } from "@shindig/db";
-import { CATEGORY_LABELS, colorName, EVENT_TYPE_LABELS, getCity, STYLE_LABELS, type EventType, type Style } from "@shindig/core";
+import { CATEGORY_LABELS, colorName, EVENT_TYPE_LABELS, getCity, STYLE_LABELS, TIER_LABELS, type EventType, type Style } from "@shindig/core";
 import { requireUser } from "../lib/auth.js";
 import { normalizeImage } from "../lib/images.js";
 import { mapLimit } from "../lib/util.js";
-import { ownedPlan, placePhotos, rankPlan, sharedPlan } from "./plans.js";
+import { ownedPlan, placePhotos, rankPlan } from "./plans.js";
 
 const THUMB_PX = 360;
 
@@ -14,8 +14,18 @@ const THUMB_PX = 360;
 const thumbs = new Map<string, string>();
 const MAX_THUMBS = 2000;
 
-type Shared = ReturnType<typeof sharedPlan>;
-type SharedVendor = Shared["categories"][number]["matches"][number]["vendor"];
+const PER_CATEGORY = 6;
+const FORMALITY = ["", "Backyard Casual", "Relaxed", "Semi-Formal", "Formal", "Black Tie"];
+const title = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+
+type Ranked = NonNullable<Awaited<ReturnType<typeof rankPlan>>>;
+type Match = Ranked["categories"][number]["matches"][number];
+type SharedVendor = Match["vendor"];
+interface Report {
+  plan: { name: string; eventType: string; date: string | null; cityId: string; guestCount: number; budget: number };
+  brief: Ranked["brief"];
+  categories: Array<{ category: Ranked["categories"][number]["category"]; allotted: number; matches: Match[] }>;
+}
 
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -63,7 +73,12 @@ export async function reportRoutes(app: FastifyInstance) {
     if (!plan) return;
     const ranked = await rankPlan(plan);
     if (!ranked) return reply.code(409).send({ error: "Read a board first" });
-    const shared = sharedPlan(plan, ranked);
+    // The owner's own copy: includes the budget, unlike the share link.
+    const shared: Report = {
+      plan: { name: plan.name, eventType: plan.eventType, date: plan.date, cityId: plan.cityId, guestCount: plan.guestCount, budget: plan.budget },
+      brief: ranked.brief,
+      categories: ranked.categories.map((c) => ({ ...c, matches: c.matches.slice(0, PER_CATEGORY) })),
+    };
 
     const vendors = shared.categories.flatMap((c) => c.matches.map((m) => m.vendor));
     const photos = await mapLimit(vendors, 6, thumb);
@@ -86,7 +101,7 @@ function ring(value: number, size: number) {
   return `<span class="ring" style="width:${size}px;height:${size}px" title="${v} Fit"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle class="track" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}"/><circle class="val" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${(c * (1 - v / 100)).toFixed(2)}"/></svg><b style="font-size:${Math.round(size * 0.34)}px">${v}</b></span>`;
 }
 
-function card(m: Shared["categories"][number]["matches"][number], photo: string | null) {
+function card(m: Match, photo: string | null) {
   const v = m.vendor;
   const visual = photo
     ? `<img src="${photo}" alt="${esc(v.name)}">`
@@ -125,7 +140,7 @@ function card(m: Shared["categories"][number]["matches"][number], photo: string 
 </article>`;
 }
 
-function renderReport(d: Shared, photoOf: Map<string, string | null>) {
+function renderReport(d: Report, photoOf: Map<string, string | null>) {
   const { plan, brief } = d;
   const date = plan.date
     ? new Date(plan.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -135,7 +150,24 @@ function renderReport(d: Shared, photoOf: Map<string, string | null>) {
     ["Date", date],
     ["City", getCity(plan.cityId)?.name ?? ""],
     ["Guests", String(plan.guestCount)],
+    ["Budget", usd(plan.budget)],
   ];
+  const chips = (items: string[]) => `<div class="chips">${items.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>`;
+  const group = (label: string, body: string) => `<div class="opt"><p class="label">${label}</p>${body}</div>`;
+  const options = [
+    brief.palette.length
+      ? group(
+          "Palette",
+          `<div class="chips">${brief.palette.map((c) => `<span class="chip"><i style="background:${safeColor(c)}"></i>${esc(colorName(c))}</span>`).join("")}</div>`,
+        )
+      : "",
+    brief.styles.length ? group("Style", chips(brief.styles.map((s) => STYLE_LABELS[s.style]))) : "",
+    group("Formality", `<p class="val">${FORMALITY[brief.formality] ?? ""}</p>`),
+    `<div class="pair">${group("Tier", `<p class="val">${TIER_LABELS[brief.tier]}</p>`)}${group("Setting", `<p class="val">${title(brief.setting)}</p>`)}</div>`,
+    brief.venueTypes.length ? group("Venue Type", chips(brief.venueTypes.map(title))) : "",
+    brief.lighting.length ? group("Lighting", chips(brief.lighting.map(title))) : "",
+    brief.keywords.length ? group("Keywords", chips(brief.keywords)) : "",
+  ].join("");
   const tabs = d.categories
     .map(
       (c, i) =>
@@ -145,7 +177,7 @@ function renderReport(d: Shared, photoOf: Map<string, string | null>) {
   const panels = d.categories
     .map(
       (c, i) =>
-        `<div class="panel" data-panel="${c.category}"${i === 0 ? "" : " hidden"}>${
+        `<div class="panel" data-panel="${c.category}"${i === 0 ? "" : " hidden"}><div class="cat-bar"><div><p class="eyebrow">${esc(CATEGORY_LABELS[c.category])} Budget</p><p class="share">${plan.budget ? Math.round((c.allotted / plan.budget) * 100) : 0}% of ${usd(plan.budget)}</p></div><span class="big-num">${usd(c.allotted)}</span></div>${
           c.matches.length ? c.matches.map((m) => card(m, photoOf.get(m.vendor.id) ?? null)).join("") : '<p class="empty">No Matches Yet</p>'
         }</div>`,
     )
@@ -177,8 +209,7 @@ ${
     : ""
 }
 <p class="summary">${esc(brief.summary)}</p>
-<p class="eyebrow" style="margin-top:22px">Styles</p>
-<div class="chips">${brief.styles.map((s) => `<span class="chip">${esc(STYLE_LABELS[s.style])}</span>`).join("")}</div>
+<div class="options">${options}</div>
 </aside>
 <section>
 <div class="tabs" role="tablist">${tabs}</div>
@@ -215,12 +246,22 @@ h3{font:600 1.05rem/1.3 var(--sans);margin:0}
 .facts dd{margin:2px 0 0;font-weight:600}
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:32px;margin-top:36px;align-items:start}
 .grid>*{min-width:0}
-.look{background:var(--veil);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;position:sticky;top:24px}
+.look{background:var(--veil);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;overflow:hidden}
 .swatch-strip{display:flex;height:76px;border-radius:var(--r);overflow:hidden;margin-top:12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
 .swatch-strip>div{flex:1}
 .summary{font:400 1.05rem/1.5 var(--display);margin:16px 0 0}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.chip{border:1px solid var(--line-2);border-radius:999px;padding:5px 12px;font-size:.84rem;font-weight:500;color:var(--ink-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:999px;padding:5px 12px;font-size:.84rem;font-weight:500;color:var(--ink-2)}
+.chip i{width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.options{margin:22px -24px 0;padding:20px 24px 0;border-top:1px solid var(--line)}
+.opt+.opt,.pair+.opt,.opt+.pair{margin-top:18px}
+.label{font-size:.82rem;font-weight:600;color:var(--ink-2);margin:0}
+.val{margin:6px 0 0;font-weight:600}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pair .opt+.opt{margin-top:0}
+.cat-bar{display:flex;justify-content:space-between;align-items:end;gap:16px;padding:4px 4px 16px}
+.cat-bar .share{margin:4px 0 0;font-size:.86rem;color:var(--smoke)}
+.big-num{font:420 1.8rem/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:16px}
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex:none;display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--line-2);padding:8px 14px;border-radius:999px;font:600 .86rem var(--sans);color:var(--ink-2);cursor:pointer}
@@ -256,10 +297,10 @@ h3{font:600 1.05rem/1.3 var(--sans);margin:0}
 .cost .est{font-size:.78rem}
 .empty{padding:48px 24px;text-align:center;color:var(--smoke)}
 footer{margin-top:48px;font-size:.8rem;color:var(--smoke);text-align:center}
-@media (max-width:900px){.grid{grid-template-columns:1fr}.look{position:static}}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
 @media (max-width:600px){
 .wrap{padding:28px 16px 48px}
-.facts{display:grid;grid-template-columns:1fr 1fr;width:100%}.facts>div{padding:8px 14px}.facts>div+div{border-left:0}.facts>div:nth-child(even){border-left:1px solid var(--line)}.facts>div:nth-child(n+3){border-top:1px solid var(--line)}
+.facts{display:grid;grid-template-columns:1fr 1fr;width:100%}.facts>div:last-child:nth-child(odd){grid-column:1/-1;border-left:0}.facts>div{padding:8px 14px}.facts>div+div{border-left:0}.facts>div:nth-child(even){border-left:1px solid var(--line)}.facts>div:nth-child(n+3){border-top:1px solid var(--line)}
 .match{grid-template-columns:76px minmax(0,1fr);gap:4px 14px;padding:14px}
 .match-visual,.match-visual img{width:76px;height:76px}
 .match-body{display:contents}
