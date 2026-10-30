@@ -1,0 +1,23 @@
+{
+  "name": "shindig",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @shindig/db migrate:dev",
+    "db:deploy": "pnpm --filter @shindig/db migrate:deploy",
+    "db:seed": "pnpm --filter @shindig/db seed",
+    "db:generate": "pnpm --filter @shindig/db generate"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "sharp", "esbuild", "argon2"]
+  }
+}

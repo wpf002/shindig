@@ -1,0 +1,163 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  planner
+  vendor
+}
+
+enum InquiryStatus {
+  sent
+  replied
+  declined
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(planner)
+  createdAt    DateTime @default(now())
+
+  sessions  Session[]
+  pinterest PinterestConnection?
+  plans     Plan[]
+  vendors   Vendor[]
+  inquiries Inquiry[]
+}
+
+/// Only the SHA-256 of the session token is stored.
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Tokens are AES-256-GCM encrypted. No pin content is stored, per Pinterest's
+/// developer terms: boards are read live and only our own analysis is kept.
+model PinterestConnection {
+  userId          String   @id
+  accessTokenEnc  String
+  refreshTokenEnc String?
+  expiresAt       DateTime
+  scope           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  eventType   String
+  /// YYYY-MM-DD, local date of the event
+  date        String?
+  cityId      String
+  guestCount  Int
+  budget      Int
+  categories  String[]
+  /// The vibe brief (see @shindig/core briefSchema). Null until inspiration is read.
+  brief       Json?
+  briefSource String?
+  briefLabel  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inquiries Inquiry[]
+  saved     SavedVendor[]
+
+  @@index([userId])
+}
+
+model Vendor {
+  id              String   @id @default(cuid())
+  ownerId         String?
+  slug            String   @unique
+  name            String
+  category        String
+  cityId          String
+  serviceRadiusMi Int
+  priceMin        Int
+  priceMax        Int
+  priceUnit       String
+  capacityMax     Int?
+  styles          String[]
+  palette         String[]
+  formalityMin    Int
+  formalityMax    Int
+  settings        String[]
+  venueType       String?
+  description     String
+  website         String?
+  email           String
+  /// Seeded sample listing, labeled in the UI. Never mixed up with real vendors.
+  isDemo          Boolean  @default(false)
+  verified        Boolean  @default(false)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner     User?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  images    VendorImage[]
+  inquiries Inquiry[]
+  saved     SavedVendor[]
+
+  @@index([category, active])
+  @@index([ownerId])
+}
+
+model VendorImage {
+  id        String   @id @default(cuid())
+  vendorId  String
+  fileName  String   @unique
+  width     Int
+  height    Int
+  createdAt DateTime @default(now())
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+}
+
+model Inquiry {
+  id          String        @id @default(cuid())
+  planId      String
+  vendorId    String
+  userId      String
+  message     String
+  status      InquiryStatus @default(sent)
+  vendorReply String?
+  createdAt   DateTime      @default(now())
+  repliedAt   DateTime?
+
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, vendorId])
+  @@index([vendorId])
+}
+
+model SavedVendor {
+  planId    String
+  vendorId  String
+  createdAt DateTime @default(now())
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@id([planId, vendorId])
+}
