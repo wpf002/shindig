@@ -66,7 +66,7 @@ const PROMPT = `These images are someone's inspiration board for an event they'r
 Read the board as a whole, the way an experienced planner would on a first consult:
 what style is it, how formal, how expensive does it look to produce, indoors or out, what kind of venue, what lighting.
 Ignore images that aren't event inspiration and count them in "skipped".
-Only use the allowed tag values. Call record_event_brief once.`;
+Only use the allowed tag values. Respond only by calling record_event_brief once, with no other text.`;
 
 export async function readBoardWithClaude(
   images: Buffer[],
@@ -83,7 +83,8 @@ export async function readBoardWithClaude(
     model: opts.model,
     max_tokens: 1500,
     tools: [TOOL],
-    tool_choice: { type: "tool", name: TOOL.name },
+    // Sonnet 5.5 and Opus 5.5 reject forced tool_choice; the prompt asks for the call.
+    tool_choice: { type: "auto" },
     messages: [{ role: "user", content }],
   });
 

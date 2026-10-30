@@ -26,7 +26,16 @@ export async function analyzeImages(images: Buffer[], cfg: VisionConfig, hint?: 
   const sample = sampleEvenly(images, MAX_IMAGES_PER_READ);
   const paletteRead = await extractPalette(sample);
 
-  if (!cfg.apiKey) {
+  let read: VisionRead | null = null;
+  if (cfg.apiKey) {
+    try {
+      read = await readBoardWithClaude(sample, { apiKey: cfg.apiKey, model: cfg.model, hint });
+    } catch (e) {
+      console.error("Claude vision failed, using palette fallback:", e);
+    }
+  }
+
+  if (!read) {
     return briefSchema.parse({
       summary: "Read from colors only, so the style tags are a rough guess. Fix anything that's off.",
       styles: stylesFromPalette(paletteRead),
@@ -43,7 +52,6 @@ export async function analyzeImages(images: Buffer[], cfg: VisionConfig, hint?: 
     });
   }
 
-  const read: VisionRead = await readBoardWithClaude(sample, { apiKey: cfg.apiKey, model: cfg.model, hint });
   const emphasis: Partial<Record<Category, number>> = {};
   for (const [k, v] of Object.entries(read.emphasis)) {
     if ((CATEGORIES as readonly string[]).includes(k)) emphasis[k as Category] = clamp01(v);
