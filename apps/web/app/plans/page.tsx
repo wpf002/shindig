@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { EVENT_TYPE_LABELS, getCity, STYLE_LABELS, type EventType } from "@shindig/core";
 import { api, usd, type Plan } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
-import { Swatches } from "@/components/Swatches";
+
+function fmtDate(d: string) {
+  return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 export default function Plans() {
   const me = useMe("planner");
@@ -16,40 +19,68 @@ export default function Plans() {
   }, [me]);
 
   return (
-    <main className="wrap" style={{ padding: "36px 20px 80px", maxWidth: 820 }}>
-      <div className="row between" style={{ marginBottom: 22 }}>
-        <h1 style={{ fontSize: "2.2rem" }}>My Plans</h1>
-        <Link className="btn thread" href="/plans/new">
-          New Plan
-        </Link>
+    <main className="wrap narrow page">
+      <div className="page-head">
+        <div>
+          <p className="eyebrow">{me ? me.name : " "}</p>
+          <h1>Plans</h1>
+        </div>
+        {plans && plans.length > 0 && (
+          <Link className="btn accent" href="/plans/new">
+            New Plan
+          </Link>
+        )}
       </div>
       {plans === null ? (
-        <p className="muted">Loading…</p>
+        <div className="loading">
+          <span className="spinner" />
+        </div>
       ) : plans.length === 0 ? (
-        <div className="card">
-          <h3>Nothing Here Yet</h3>
-          <p className="muted" style={{ marginTop: 6 }}>
-            Start a plan with the basics: date, guests, budget. Then bring your board.
-          </p>
+        <div className="empty-state">
+          <div className="swatches lg" style={{ justifyContent: "center", marginBottom: 24 }}>
+            {["#8f3a46", "#e8c4bc", "#a3ae8d", "#c9a77c"].map((c) => (
+              <span key={c} className="swatch" style={{ background: c }} />
+            ))}
+          </div>
+          <h3>No Plans Yet</h3>
+          <Link className="btn accent lg" href="/plans/new">
+            Start a Plan <span className="arrow">→</span>
+          </Link>
         </div>
       ) : (
-        plans.map((p) => (
-          <Link key={p.id} href={`/plans/${p.id}`} className="card list-plan">
-            <div>
-              <h3>{p.name}</h3>
-              <p className="small muted">
-                {EVENT_TYPE_LABELS[p.eventType as EventType]} · {getCity(p.cityId)?.name} · {p.guestCount} guests · {usd(p.budget)}
-                {p.date ? ` · ${p.date}` : ""}
-              </p>
-              {p.brief && (
-                <p className="small" style={{ marginTop: 4 }}>
-                  {p.brief.styles.slice(0, 3).map((s) => STYLE_LABELS[s.style]).join(", ")}
-                </p>
-              )}
-            </div>
-            {p.brief ? <Swatches colors={p.brief.palette} /> : <span className="badge amber">Needs Inspiration</span>}
-          </Link>
-        ))
+        <div className="plan-list">
+          {plans.map((p) => (
+            <Link key={p.id} href={`/plans/${p.id}`} className="card plan-row">
+              <span className={p.brief ? "bar" : "bar empty"}>
+                {p.brief?.palette.map((c) => <i key={c} style={{ background: c }} />)}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div className="row" style={{ gap: 10 }}>
+                  <h3>{p.name}</h3>
+                  {!p.brief && <span className="badge amber">Needs Board</span>}
+                </div>
+                <div className="meta">
+                  <span>{EVENT_TYPE_LABELS[p.eventType as EventType]}</span>
+                  {p.date && <span>{fmtDate(p.date)}</span>}
+                  <span>{getCity(p.cityId)?.name}</span>
+                  <span>{p.guestCount} Guests</span>
+                  <span>{usd(p.budget)}</span>
+                </div>
+                {p.brief && (
+                  <p className="serif" style={{ marginTop: 8, fontStyle: "italic", color: "var(--ink-2)" }}>
+                    {p.brief.styles
+                      .slice(0, 3)
+                      .map((s) => STYLE_LABELS[s.style])
+                      .join(" · ")}
+                  </p>
+                )}
+              </div>
+              <span className="go" aria-hidden>
+                →
+              </span>
+            </Link>
+          ))}
+        </div>
       )}
     </main>
   );

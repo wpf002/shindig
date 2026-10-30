@@ -77,24 +77,33 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
 
   if (busy) {
     return (
-      <div className="card row" style={{ gap: 14 }}>
-        <span className="spinner" />
-        <div>
-          <p>{busy}</p>
-          <p className="small muted">Pulling the palette and reading the style. Takes about 20 seconds.</p>
+      <div className="card reading" title="About 20 seconds">
+        <div className="loader" aria-hidden>
+          {["#8f3a46", "#c98b84", "#e8c4bc", "#a3ae8d", "#c9a77c"].map((c) => (
+            <i key={c} style={{ background: c }} />
+          ))}
         </div>
+        <h3>{busy}</h3>
+        <p className="small muted">Palette, Style, Formality</p>
       </div>
     );
   }
 
+  const pinOff = status !== null && !status.enabled;
+
   return (
-    <div className="stack" style={{ ["--gap" as string]: "20px" }}>
+    <div className="stack" style={{ ["--gap" as string]: "16px" }}>
       {notice && <p className={notice.startsWith("Pinterest is connected") ? "ok" : "error"}>{notice}</p>}
       {error && <p className="error">{error}</p>}
 
-      <section className="card">
+      <div className={`intake ${pinOff ? "solo" : ""}`}>
+      {!pinOff && (
+      <section className="card pad-lg">
         <div className="panel-title">
-          <h3>From Pinterest</h3>
+          <h3 className="row" style={{ gap: 10 }}>
+            <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#e60023", display: "inline-block" }} aria-hidden />
+            Pinterest
+          </h3>
           {status?.connected && (
             <button className="linkish small" onClick={disconnect}>
               Disconnect
@@ -102,20 +111,19 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
           )}
         </div>
         {!status ? (
-          <p className="muted">Checking…</p>
-        ) : !status.enabled ? (
-          <p className="muted small">Pinterest isn&apos;t set up on this server yet. Upload images below instead.</p>
+          <span className="spinner" />
         ) : !status.connected ? (
-          <div className="stack">
-            <p className="muted">Pick a board and Shindig reads it live. We keep the read, not your pins.</p>
-            <a className="btn thread" href={`/api/pinterest/connect?planId=${plan.id}`}>
-              Connect Pinterest
-            </a>
-          </div>
+          <a
+            className="btn accent"
+            href={`/api/pinterest/connect?planId=${plan.id}`}
+            title="Shindig reads boards live and keeps the analysis, not your pins."
+          >
+            Connect Pinterest
+          </a>
         ) : boards === null ? (
-          <p className="muted">Loading your boards…</p>
+          <span className="spinner" />
         ) : boards.length === 0 ? (
-          <p className="muted">No boards on that account yet.</p>
+          <p className="muted">No Boards</p>
         ) : (
           <div className="boards">
             {boards.map((b) => (
@@ -126,18 +134,22 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
                 ) : (
                   <div className="cover" />
                 )}
-                <div className="meta">
+                <div className="meta-b">
                   <strong>{b.name}</strong>
-                  <div className="muted">{b.pinCount} pins</div>
+                  <div className="muted">{b.pinCount} Pins</div>
                 </div>
               </button>
             ))}
           </div>
         )}
       </section>
+      )}
 
-      <section className="card">
-        <h3 style={{ marginBottom: 12 }}>Or Upload Images</h3>
+      <section className="card pad-lg">
+        <div className="panel-title">
+          <h3>Upload</h3>
+          <span className="small muted">3–30 Images</span>
+        </div>
         <div
           className={`dropzone ${over ? "over" : ""}`}
           role="button"
@@ -155,10 +167,13 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
             upload(e.dataTransfer.files);
           }}
         >
-          <p>
-            <strong>Drop 3–30 images</strong>
-          </p>
-          <p className="small muted">Screenshots, saved pins, magazine photos. We read them and throw them away.</p>
+          <div title="Screenshots, saved pins, photos. Images are read, then discarded.">
+            <span className="plus" aria-hidden>
+              +
+            </span>
+            <strong>Drop Images</strong>
+            <p className="small muted">Or Click to Browse</p>
+          </div>
         </div>
         <input
           ref={fileRef}
@@ -169,6 +184,7 @@ export function Inspiration({ plan, onRead, notice }: { plan: Plan; onRead: (p: 
           onChange={(e) => e.target.files && upload(e.target.files)}
         />
       </section>
+      </div>
     </div>
   );
 }

@@ -18,18 +18,21 @@ export function InquiryList({ planId, version }: { planId: string; version: unkn
   }, [planId, version]);
   if (rows.length === 0) return null;
   return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <p className="eyebrow" style={{ marginBottom: 10 }}>Messages</p>
-      <div className="stack" style={{ ["--gap" as string]: "14px" }}>
+    <div className="card">
+      <div className="panel-title" style={{ marginBottom: 4 }}>
+        <p className="eyebrow">Messages</p>
+        <span className="small muted">{rows.length}</span>
+      </div>
+      <div>
         {rows.map((r) => (
-          <div key={r.id}>
+          <div key={r.id} className="inbox-item">
             <div className="row between">
               <strong className="small">{r.vendor.name}</strong>
-              <span className={`badge ${r.status === "replied" ? "moss" : r.status === "declined" ? "thread" : ""}`}>
+              <span className={`badge ${r.status === "replied" ? "moss" : r.status === "declined" ? "accent" : "amber"}`}>
                 {r.status === "sent" ? "Waiting" : r.status === "replied" ? "Replied" : "Declined"}
               </span>
             </div>
-            {r.vendorReply && <p className="small" style={{ marginTop: 4 }}>{r.vendorReply}</p>}
+            {r.vendorReply && <p className="small" style={{ marginTop: 6, color: "var(--ink-2)" }}>{r.vendorReply}</p>}
           </div>
         ))}
       </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { api, type User } from "@/lib/api";
+import { AuthArt } from "@/components/AuthArt";
 
 function SignupForm() {
   const router = useRouter();
@@ -30,14 +31,29 @@ function SignupForm() {
   }
 
   return (
-    <main className="wrap auth">
-      <form className="card stack" onSubmit={submit}>
-        <h2>{role === "vendor" ? "List Your Business" : "Start Planning"}</h2>
-        <div className="chips" role="group" aria-label="Account type">
-          <button type="button" className="chip" aria-pressed={role === "planner"} onClick={() => setRole("planner")}>
-            I&apos;m Planning an Event
+    <main className="auth">
+      <AuthArt>
+        <p className="eyebrow">{role === "vendor" ? "For Vendors" : "For Planners"}</p>
+        <h2 style={{ marginTop: 12 }}>
+          {role === "vendor" ? (
+            <>
+              Get found for <em>your style.</em>
+            </>
+          ) : (
+            <>
+              Your board, <em>booked.</em>
+            </>
+          )}
+        </h2>
+      </AuthArt>
+      <div className="auth-form">
+      <form className="stack" style={{ ["--gap" as string]: "20px" }} onSubmit={submit}>
+        <h1>{role === "vendor" ? "List Your Business" : "Start a Plan"}</h1>
+        <div className="seg two" role="group" aria-label="Account type">
+          <button type="button" aria-pressed={role === "planner"} onClick={() => setRole("planner")}>
+            Planning an Event
           </button>
-          <button type="button" className="chip" aria-pressed={role === "vendor"} onClick={() => setRole("vendor")}>
+          <button type="button" aria-pressed={role === "vendor"} onClick={() => setRole("vendor")}>
             I&apos;m a Vendor
           </button>
         </div>
@@ -52,15 +68,19 @@ function SignupForm() {
         </label>
         <label className="field">
           <span>Password</span>
-          <input name="password" type="password" autoComplete="new-password" minLength={10} required />
+          <input name="password" type="password" autoComplete="new-password" minLength={10} required placeholder="10+ characters" />
         </label>
-        <button className="btn thread" disabled={busy}>
+        <button className="btn accent lg block" disabled={busy}>
           {busy ? <span className="spinner" /> : null} Create Account
         </button>
         <p className="small muted">
-          Have an account? <Link href="/login">Sign In</Link>
+          Have an account?{" "}
+          <Link href="/login" className="linkish">
+            Sign In
+          </Link>
         </p>
       </form>
+      </div>
     </main>
   );
 }

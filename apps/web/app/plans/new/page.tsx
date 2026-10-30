@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  allocateBudget,
   BASE_ALLOCATION,
   CATEGORIES,
   CATEGORY_LABELS,
@@ -12,7 +13,7 @@ import {
   type Category,
   type EventType,
 } from "@shindig/core";
-import { api, type Plan } from "@/lib/api";
+import { api, usd, type Plan } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
 const DEFAULTS: Record<EventType, Category[]> = {
@@ -32,7 +33,12 @@ export default function NewPlan() {
   const [cats, setCats] = useState<Category[]>(DEFAULTS.wedding);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [budget, setBudget] = useState("");
+  const [guests, setGuests] = useState(100);
 
+  const total = Number(budget.replace(/[^0-9]/g, "")) || 0;
+  const split = allocateBudget({ eventType, budget: total, categories: cats });
+  const rows = cats.map((c) => ({ c, amt: split[c] ?? 0 })).sort((a, b) => b.amt - a.amt);
   const offered = CATEGORIES.filter((c) => c in BASE_ALLOCATION[eventType]);
 
   function pickType(t: EventType) {
@@ -67,73 +73,112 @@ export default function NewPlan() {
   }
 
   return (
-    <main className="wrap" style={{ padding: "36px 20px 80px", maxWidth: 760 }}>
-      <form className="card stack" style={{ ["--gap" as string]: "20px" }} onSubmit={submit}>
+    <main className="wrap page">
+      <div className="page-head">
         <div>
           <p className="eyebrow">New Plan</p>
-          <h2 style={{ marginTop: 6 }}>The Basics</h2>
-          <p className="muted small" style={{ marginTop: 4 }}>
-            Your board decides the look. These numbers decide what&apos;s realistic.
-          </p>
+          <h1>The Basics</h1>
         </div>
-        {error && <p className="error">{error}</p>}
+      </div>
+      <form className="split" onSubmit={submit}>
+        <div className="card pad-lg stack" style={{ ["--gap" as string]: "28px" }}>
+          {error && <p className="error">{error}</p>}
 
-        <div className="chips" role="group" aria-label="Event type">
-          {EVENT_TYPES.map((t) => (
-            <button type="button" key={t} className="chip" aria-pressed={eventType === t} onClick={() => pickType(t)}>
-              {EVENT_TYPE_LABELS[t]}
-            </button>
-          ))}
-        </div>
-
-        <label className="field">
-          <span>Name</span>
-          <input name="name" required maxLength={80} placeholder="Ava & Sam, Spring 2027" />
-        </label>
-
-        <div className="grid-2">
-          <label className="field">
-            <span>Date</span>
-            <input name="date" type="date" />
-          </label>
-          <label className="field">
-            <span>City</span>
-            <select name="cityId" defaultValue="dallas">
-              {CITIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+          <div>
+            <span className="label">Event</span>
+            <div className="seg" role="group" aria-label="Event type">
+              {EVENT_TYPES.map((t) => (
+                <button type="button" key={t} aria-pressed={eventType === t} onClick={() => pickType(t)}>
+                  {EVENT_TYPE_LABELS[t]}
+                </button>
               ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Guests</span>
-            <input name="guestCount" type="number" min={1} max={5000} required defaultValue={100} />
-          </label>
-          <label className="field">
-            <span>Total Budget ($)</span>
-            <input name="budget" inputMode="numeric" required placeholder="30000" pattern="[0-9,$ ]+" />
-          </label>
-        </div>
+            </div>
+          </div>
 
-        <div>
-          <p className="field" style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>
-            What You Need
-          </p>
-          <div className="chips">
-            {offered.map((c) => (
-              <button type="button" key={c} className="chip" aria-pressed={cats.includes(c)} onClick={() => toggle(c)}>
-                {CATEGORY_LABELS[c]}
-              </button>
-            ))}
+          <label className="field">
+            <span>Name</span>
+            <input name="name" required maxLength={80} placeholder="Ava & Sam, Spring 2027" />
+          </label>
+
+          <div className="grid-2">
+            <label className="field">
+              <span>Date</span>
+              <input name="date" type="date" />
+            </label>
+            <label className="field">
+              <span>City</span>
+              <select name="cityId" defaultValue="dallas">
+                {CITIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Guests</span>
+              <input
+                name="guestCount"
+                type="number"
+                min={1}
+                max={5000}
+                required
+                value={guests}
+                onChange={(e) => setGuests(Number(e.target.value))}
+              />
+            </label>
+            <label className="field">
+              <span>Budget</span>
+              <span className="input-prefix">
+                <b>$</b>
+                <input
+                  name="budget"
+                  inputMode="numeric"
+                  required
+                  placeholder="30,000"
+                  pattern="[0-9,$ ]+"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                />
+              </span>
+            </label>
+          </div>
+
+          <div>
+            <span className="label">Vendors</span>
+            <div className="chips">
+              {offered.map((c) => (
+                <button type="button" key={c} className="chip" aria-pressed={cats.includes(c)} onClick={() => toggle(c)}>
+                  {CATEGORY_LABELS[c]}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="row">
-          <button className="btn thread" disabled={busy || cats.length === 0}>
-            {busy ? <span className="spinner" /> : null} Next: Your Board
+        <aside className="card sticky">
+          <p className="eyebrow">Budget Split</p>
+          <p className="big-num" style={{ marginTop: 10 }}>
+            {total ? usd(total) : "$—"}
+          </p>
+          <p className="small muted" style={{ marginTop: 4 }}>
+            {total && guests > 0 ? `${usd(total / guests)} Per Guest` : `${EVENT_TYPE_LABELS[eventType]}`}
+          </p>
+          <ul className="alloc" style={{ marginTop: 18 }}>
+            {rows.map(({ c, amt }) => (
+              <li key={c}>
+                <span>{CATEGORY_LABELS[c]}</span>
+                <b>{total ? usd(amt) : "—"}</b>
+                <span className="track">
+                  <i style={{ width: `${total ? (amt / total) * 100 : (BASE_ALLOCATION[eventType][c] ?? 0.04) * 100}%` }} />
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button className="btn accent lg block" style={{ marginTop: 20 }} disabled={busy || cats.length === 0}>
+            {busy ? <span className="spinner" /> : null} Add Your Board <span className="arrow">→</span>
           </button>
-        </div>
+        </aside>
       </form>
     </main>
   );

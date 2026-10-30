@@ -56,27 +56,76 @@ export default function VendorPortal() {
     if (me) load();
   }, [me, load]);
 
-  if (vendor === undefined) return <main className="wrap" style={{ padding: 40 }}><p className="muted">Loading…</p></main>;
+  if (vendor === undefined)
+    return (
+      <main className="loading">
+        <span className="spinner" />
+      </main>
+    );
+
+  const open = inquiries.filter((r) => r.status === "sent").length;
 
   return (
-    <main className="wrap" style={{ padding: "32px 20px 80px", maxWidth: 900 }}>
-      <p className="eyebrow">Vendor Portal</p>
-      <h1 style={{ fontSize: "2.4rem", marginTop: 6 }}>{vendor?.name ?? "Your Listing"}</h1>
-      <p className="muted" style={{ marginTop: 6, maxWidth: 560 }}>
-        Planners find you by their Pinterest boards. Your photos and tags are how Shindig knows your look.
-      </p>
+    <main className={vendor ? "wrap" : "wrap narrow"}>
+      <header className="plan-head">
+        <div className="row between" style={{ alignItems: "end" }}>
+          <div>
+            <div className="row" style={{ gap: 8 }}>
+              <p className="eyebrow">{vendor ? CATEGORY_LABELS[vendor.category] : "Portal"}</p>
+              {vendor && <span className={`badge ${vendor.active ? "moss" : ""}`}>{vendor.active ? "Live" : "Hidden"}</span>}
+            </div>
+            <h1 style={{ marginTop: 10 }}>{vendor?.name ?? "Your Listing"}</h1>
+          </div>
+          {vendor && <Swatches colors={vendor.palette} size="lg" />}
+        </div>
+        {vendor && (
+          <dl className="facts">
+            <div>
+              <dt>Inquiries</dt>
+              <dd>{inquiries.length}</dd>
+            </div>
+            <div>
+              <dt>Open</dt>
+              <dd>{open}</dd>
+            </div>
+            <div>
+              <dt>Photos</dt>
+              <dd>{vendor.images.length}</dd>
+            </div>
+            <div>
+              <dt>Styles</dt>
+              <dd>{vendor.styles.length}</dd>
+            </div>
+          </dl>
+        )}
+      </header>
 
-      {vendor && inquiries.length > 0 && <Inbox rows={inquiries} onReply={load} />}
-      <ProfileForm vendor={vendor} suggestion={suggestion} onSaved={(v) => setVendor(v)} />
-      {vendor && (
-        <Portfolio
-          vendor={vendor}
-          onChange={(s) => {
-            if (s) setSuggestion(s);
-            load();
-          }}
-        />
-      )}
+      <div className={vendor ? "portal" : ""} style={vendor ? undefined : { paddingBottom: 112 }}>
+        {vendor && (
+          <nav className="sticky" aria-label="Sections">
+            {inquiries.length > 0 && (
+              <a href="#inquiries">
+                Inquiries {open > 0 && <span className="badge accent plain">{open}</span>}
+              </a>
+            )}
+            <a href="#profile">Profile</a>
+            <a href="#portfolio">Portfolio</a>
+          </nav>
+        )}
+        <div className="stack" style={{ ["--gap" as string]: "24px" }}>
+          {vendor && inquiries.length > 0 && <Inbox rows={inquiries} onReply={load} />}
+          <ProfileForm vendor={vendor} suggestion={suggestion} onSaved={(v) => setVendor(v)} />
+          {vendor && (
+            <Portfolio
+              vendor={vendor}
+              onChange={(s) => {
+                if (s) setSuggestion(s);
+                load();
+              }}
+            />
+          )}
+        </div>
+      </div>
     </main>
   );
 }
@@ -142,7 +191,7 @@ function ProfileForm({ vendor, suggestion, onSaved }: { vendor: Mine | null; sug
   }
 
   return (
-    <form className="card stack" style={{ marginTop: 24, ["--gap" as string]: "18px" }} onSubmit={submit}>
+    <form id="profile" className="card pad-lg stack" style={{ ["--gap" as string]: "22px" }} onSubmit={submit}>
       <h2>Profile</h2>
       <div className="grid-2">
         <label className="field">
@@ -174,11 +223,11 @@ function ProfileForm({ vendor, suggestion, onSaved }: { vendor: Mine | null; sug
           <input name="serviceRadiusMi" type="number" min={0} max={300} required defaultValue={vendor?.serviceRadiusMi ?? 50} />
         </label>
         <label className="field">
-          <span>Starting Price ($)</span>
+          <span>Starting Price</span>
           <input name="priceMin" inputMode="numeric" required defaultValue={vendor?.priceMin} />
         </label>
         <label className="field">
-          <span>Typical High End ($)</span>
+          <span>Typical High</span>
           <input name="priceMax" inputMode="numeric" required defaultValue={vendor?.priceMax} />
         </label>
         <label className="field">
@@ -214,7 +263,7 @@ function ProfileForm({ vendor, suggestion, onSaved }: { vendor: Mine | null; sug
 
       <label className="field">
         <span>About</span>
-        <textarea name="description" maxLength={1200} defaultValue={vendor?.description} placeholder="What you do and what it's like to work with you. Keep it short." />
+        <textarea name="description" maxLength={1200} defaultValue={vendor?.description} placeholder="What you do, in a few lines." />
       </label>
       <label className="field">
         <span>Website</span>
@@ -223,17 +272,17 @@ function ProfileForm({ vendor, suggestion, onSaved }: { vendor: Mine | null; sug
 
       <div>
         <div className="row between" style={{ marginBottom: 8 }}>
-          <p className="eyebrow">Your Look</p>
+          <span className="label" style={{ margin: 0 }}>Your Look</span>
           {suggestion && (
             <button type="button" className="btn sm ghost" onClick={applySuggestion}>
-              Use Tags From Photos
+              Use Photo Tags
             </button>
           )}
         </div>
         {suggestion && (
-          <p className="small muted" style={{ marginBottom: 8 }}>
-            Your photos read as {suggestion.styles.map((s) => STYLE_LABELS[s]).join(", ") || "hard to call"}
-            {suggestion.palette.length ? `, in ${[...new Set(suggestion.palette.map(colorName))].slice(0, 3).join(", ")}` : ""}.
+          <p className="ok small" style={{ marginBottom: 10 }}>
+            {suggestion.styles.map((s) => STYLE_LABELS[s]).join(", ") || "Mixed"}
+            {suggestion.palette.length ? ` · ${[...new Set(suggestion.palette.map(colorName))].slice(0, 3).join(", ")}` : ""}
           </p>
         )}
         <div className="chips">
@@ -245,21 +294,27 @@ function ProfileForm({ vendor, suggestion, onSaved }: { vendor: Mine | null; sug
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <Swatches colors={palette} />
-          {palette.length === 0 && <span className="small muted">Upload photos to set your palette.</span>}
+          {palette.length === 0 && <span className="small muted">No Palette Yet</span>}
         </div>
       </div>
 
       <div className="grid-2">
         <label className="field">
-          <span>Least Formal: {FORMALITY[formality[0]]}</span>
-          <input type="range" min={1} max={5} value={formality[0]} onChange={(e) => setFormality(([, b]) => [Math.min(Number(e.target.value), b), b])} />
+          <span className="row between">
+            Least Formal <b style={{ color: "var(--ink)" }}>{FORMALITY[formality[0]]}</b>
+          </span>
+          <input type="range" min={1} max={5} value={formality[0]} style={{ ["--fill" as string]: `${((formality[0] - 1) / 4) * 100}%` }} onChange={(e) => setFormality(([, b]) => [Math.min(Number(e.target.value), b), b])} />
         </label>
         <label className="field">
-          <span>Most Formal: {FORMALITY[formality[1]]}</span>
-          <input type="range" min={1} max={5} value={formality[1]} onChange={(e) => setFormality(([a]) => [a, Math.max(Number(e.target.value), a)])} />
+          <span className="row between">
+            Most Formal <b style={{ color: "var(--ink)" }}>{FORMALITY[formality[1]]}</b>
+          </span>
+          <input type="range" min={1} max={5} value={formality[1]} style={{ ["--fill" as string]: `${((formality[1] - 1) / 4) * 100}%` }} onChange={(e) => setFormality(([a]) => [a, Math.max(Number(e.target.value), a)])} />
         </label>
       </div>
 
+      <div>
+      <span className="label">Setting</span>
       <div className="chips">
         {(["indoor", "outdoor"] as const).map((s) => (
           <button type="button" key={s} className="chip" aria-pressed={settings.includes(s)} onClick={() => toggleSetting(s)}>
@@ -267,11 +322,12 @@ function ProfileForm({ vendor, suggestion, onSaved }: { vendor: Mine | null; sug
           </button>
         ))}
       </div>
+      </div>
 
       {error && <p className="error">{error}</p>}
-      {saved && <p className="ok">Saved. You&apos;re live in matches.</p>}
+      {saved && <p className="ok">Saved. Live in Matches.</p>}
       <div>
-        <button className="btn thread" disabled={busy}>
+        <button className="btn accent lg" disabled={busy}>
           {busy ? <span className="spinner" /> : null} {vendor ? "Save Changes" : "Create Listing"}
         </button>
       </div>
@@ -306,19 +362,30 @@ function Portfolio({ vendor, onChange }: { vendor: Mine; onChange: (s: Suggestio
   }
 
   return (
-    <section className="card" style={{ marginTop: 24 }}>
+    <section id="portfolio" className="card pad-lg">
       <div className="panel-title">
         <h2>Portfolio</h2>
-        <button className="btn sm" onClick={() => ref.current?.click()} disabled={busy}>
+        <button className="btn sm accent" onClick={() => ref.current?.click()} disabled={busy}>
           {busy ? <span className="spinner" /> : null} Add Photos
         </button>
       </div>
-      <p className="small muted" style={{ marginBottom: 14 }}>
-        Your own work only. Shindig reads these to match you to boards that look like them.
-      </p>
       {error && <p className="error">{error}</p>}
       {vendor.images.length === 0 ? (
-        <p className="muted">No photos yet. Add at least 3.</p>
+        <div
+          className="dropzone"
+          role="button"
+          tabIndex={0}
+          title="Your own work only. Shindig reads these to match you to boards."
+          onClick={() => ref.current?.click()}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && ref.current?.click()}
+        >
+          <div>
+            <span className="plus" aria-hidden>
+              +
+            </span>
+            <strong>Add 3+ Photos</strong>
+          </div>
+        </div>
       ) : (
         <div className="thumbs">
           {vendor.images.map((img) => (
@@ -339,9 +406,9 @@ function Portfolio({ vendor, onChange }: { vendor: Mine; onChange: (s: Suggestio
 
 function Inbox({ rows, onReply }: { rows: Inq[]; onReply: () => void }) {
   return (
-    <section className="card" style={{ marginTop: 24 }}>
-      <h2 style={{ marginBottom: 14 }}>Inquiries</h2>
-      <div className="stack" style={{ ["--gap" as string]: "18px" }}>
+    <section id="inquiries" className="card pad-lg">
+      <h2 style={{ marginBottom: 18 }}>Inquiries</h2>
+      <div>
         {rows.map((r) => (
           <InquiryRow key={r.id} row={r} onReply={onReply} />
         ))}
@@ -372,29 +439,35 @@ function InquiryRow({ row, onReply }: { row: Inq; onReply: () => void }) {
   }
 
   return (
-    <div className="card flat" style={{ padding: 16 }}>
+    <div className="inq">
       <div className="row between">
-        <strong>
-          {row.from} · {EVENT_TYPE_LABELS[e.type]}
-        </strong>
+        <div className="row" style={{ gap: 10 }}>
+          <h3>{row.from}</h3>
+          <span className={`badge ${row.status === "sent" ? "accent" : row.status === "replied" ? "moss" : ""}`}>
+            {row.status === "sent" ? "New" : row.status === "replied" ? "Replied" : "Declined"}
+          </span>
+        </div>
         {row.brief && <Swatches colors={row.brief.palette.slice(0, 5)} />}
       </div>
-      <p className="small muted" style={{ marginTop: 4 }}>
-        {e.date ?? "Date open"} · {getCity(e.cityId)?.name} · {e.guestCount} guests
-        {e.categoryBudget ? ` · about ${usd(e.categoryBudget)} for your category` : ""}
-      </p>
+      <div className="meta">
+        <span>{EVENT_TYPE_LABELS[e.type]}</span>
+        <span>{e.date ?? "Date Open"}</span>
+        <span>{getCity(e.cityId)?.name}</span>
+        <span>{e.guestCount} Guests</span>
+        {e.categoryBudget ? <span>~{usd(e.categoryBudget)} Budget</span> : null}
+      </div>
       {row.brief && (
-        <p className="small" style={{ marginTop: 8 }}>
-          <strong>Their look:</strong> {row.brief.styles.map((s) => STYLE_LABELS[s.style]).join(", ")}. {row.brief.summary}
+        <p className="serif" style={{ marginTop: 10, fontStyle: "italic", color: "var(--ink-2)" }} title={row.brief.summary}>
+          {row.brief.styles.map((s) => STYLE_LABELS[s.style]).join(" · ")}
         </p>
       )}
-      <p style={{ marginTop: 10 }}>{row.message}</p>
+      <blockquote>{row.message}</blockquote>
       {row.status === "sent" ? (
         <div className="stack" style={{ marginTop: 12 }}>
-          <textarea value={text} onChange={(ev) => setText(ev.target.value)} placeholder="Your reply" maxLength={2000} />
+          <textarea value={text} onChange={(ev) => setText(ev.target.value)} placeholder="Reply" maxLength={2000} />
           {error && <p className="error">{error}</p>}
           <div className="row">
-            <button className="btn sm thread" disabled={busy || !text.trim()} onClick={() => send("replied")}>
+            <button className="btn sm accent" disabled={busy || !text.trim()} onClick={() => send("replied")}>
               Send Reply
             </button>
             <button className="btn sm ghost" disabled={busy} onClick={() => send("declined")}>
@@ -402,11 +475,11 @@ function InquiryRow({ row, onReply }: { row: Inq; onReply: () => void }) {
             </button>
           </div>
         </div>
-      ) : (
-        <p className="small muted" style={{ marginTop: 10 }}>
-          You {row.status === "replied" ? "replied" : "declined"}: {row.vendorReply}
+      ) : row.vendorReply ? (
+        <p className="small" style={{ marginTop: 12, color: "var(--smoke)" }}>
+          <b style={{ color: "var(--ink-2)" }}>You</b> · {row.vendorReply}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

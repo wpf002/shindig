@@ -49,47 +49,74 @@ function PlanView() {
     loadMatches();
   }
 
-  if (error && !plan) return <main className="wrap" style={{ padding: 40 }}><p className="error">{error}</p></main>;
-  if (!plan) return <main className="wrap" style={{ padding: 40 }}><p className="muted">Loading…</p></main>;
+  if (error && !plan)
+    return (
+      <main className="wrap page">
+        <p className="error">{error}</p>
+      </main>
+    );
+  if (!plan)
+    return (
+      <main className="loading">
+        <span className="spinner" />
+      </main>
+    );
 
   const pin = params.get("pinterest");
   const needsBoard = !plan.brief || replacing;
 
+  const facts: Array<[string, string]> = [
+    ["Event", EVENT_TYPE_LABELS[plan.eventType as EventType]],
+    ["Date", plan.date ? new Date(plan.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "TBD"],
+    ["City", getCity(plan.cityId)?.name ?? ""],
+    ["Guests", String(plan.guestCount)],
+    ["Budget", usd(plan.budget)],
+  ];
+
   return (
     <main className="wrap">
       <header className="plan-head">
-        <Link href="/plans" className="small muted">
-          ← My Plans
+        <Link href="/plans" className="back">
+          ← Plans
         </Link>
-        <h1 style={{ fontSize: "2.4rem", marginTop: 8 }}>{plan.name}</h1>
-        <p className="muted" style={{ marginTop: 6 }}>
-          {EVENT_TYPE_LABELS[plan.eventType as EventType]} · {getCity(plan.cityId)?.name} · {plan.guestCount} guests · {usd(plan.budget)}
-          {plan.date ? ` · ${plan.date}` : ""}
-        </p>
+        <h1 style={{ marginTop: 10 }}>{plan.name}</h1>
+        <dl className="facts">
+          {facts.map(([k, v]) => (
+            <div key={k}>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
       </header>
 
       {needsBoard ? (
-        <div style={{ maxWidth: 760, paddingBottom: 80 }}>
-          <h2 style={{ marginBottom: 6 }}>Bring Your Board</h2>
-          <p className="muted" style={{ marginBottom: 20 }}>
-            This is how Shindig learns the look. The more pins, the better the read.
-          </p>
+        <div style={{ paddingBottom: 96 }}>
+          <div className="section-label">
+            <h2>Add Your Board</h2>
+          </div>
           <Inspiration plan={plan} onRead={onBrief} notice={pin ? PIN_NOTICE[pin] : null} />
           {replacing && (
             <button className="linkish small" style={{ marginTop: 16 }} onClick={() => setReplacing(false)}>
-              Keep the Current Board
+              Keep Current Board
             </button>
           )}
         </div>
       ) : (
         <div className="plan-grid">
-          <aside>
+          <aside className="stack">
             <BriefPanel plan={plan} onSaved={onBrief} onReplace={() => setReplacing(true)} />
             <InquiryList planId={plan.id} version={matches} />
           </aside>
           <section>
             {error && <p className="error">{error}</p>}
-            {matches ? <Matches plan={plan} data={matches} onChange={loadMatches} /> : <p className="muted">Finding your vendors…</p>}
+            {matches ? (
+              <Matches plan={plan} data={matches} onChange={loadMatches} />
+            ) : (
+              <div className="loading">
+                <span className="spinner" />
+              </div>
+            )}
           </section>
         </div>
       )}

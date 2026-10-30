@@ -10,3 +10,4 @@ uploads/
 coverage
 .DS_Store
 packages/db/src/generated/
+.claude/

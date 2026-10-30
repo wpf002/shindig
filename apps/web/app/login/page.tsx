@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { api, type User } from "@/lib/api";
 import { safeNext } from "@/lib/useMe";
+import { AuthArt } from "@/components/AuthArt";
 
 function LoginForm() {
   const router = useRouter();
@@ -30,9 +31,16 @@ function LoginForm() {
   }
 
   return (
-    <main className="wrap auth">
-      <form className="card stack" onSubmit={submit}>
-        <h2>Welcome Back</h2>
+    <main className="auth">
+      <AuthArt>
+        <p className="eyebrow">Shindig</p>
+        <h2 style={{ marginTop: 12 }}>
+          Back to <em>the board.</em>
+        </h2>
+      </AuthArt>
+      <div className="auth-form">
+      <form className="stack" style={{ ["--gap" as string]: "20px" }} onSubmit={submit}>
+        <h1>Sign In</h1>
         {error && <p className="error">{error}</p>}
         <label className="field">
           <span>Email</span>
@@ -42,13 +50,17 @@ function LoginForm() {
           <span>Password</span>
           <input name="password" type="password" autoComplete="current-password" required />
         </label>
-        <button className="btn" disabled={busy}>
+        <button className="btn accent lg block" disabled={busy}>
           {busy ? <span className="spinner" /> : null} Sign In
         </button>
         <p className="small muted">
-          New here? <Link href="/signup">Create an Account</Link>
+          New here?{" "}
+          <Link href="/signup" className="linkish">
+            Create an Account
+          </Link>
         </p>
       </form>
+      </div>
     </main>
   );
 }

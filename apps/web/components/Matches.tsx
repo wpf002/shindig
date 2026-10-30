@@ -13,9 +13,10 @@ import {
 } from "@shindig/core";
 import { api, usd, type MatchesResponse, type MatchRow, type Plan } from "@/lib/api";
 import { Swatches } from "./Swatches";
+import { Ring } from "./Ring";
 
 const FIT_LABEL = { under: "Under Budget", within: "In Budget", stretch: "A Stretch", over: "Over Budget" } as const;
-const FIT_BADGE = { under: "moss", within: "moss", stretch: "amber", over: "thread" } as const;
+const FIT_BADGE = { under: "moss", within: "moss", stretch: "amber", over: "accent" } as const;
 
 export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesResponse; onChange: () => void }) {
   const [tab, setTab] = useState<Category>(data.categories[0]!.category);
@@ -30,15 +31,18 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
   return (
     <div>
       {data.conflicts.length > 0 && (
-        <div className="stack" style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 20 }}>
           {data.conflicts.map((c, i) => (
-            <div key={i} className="note">
-              <strong>{c.message}</strong>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-                {c.options.map((o) => (
-                  <li key={o}>{o}</li>
-                ))}
-              </ul>
+            <div key={i} className="conflict">
+              <span className="icon">!</span>
+              <div>
+                <strong>{c.message}</strong>
+                <ul>
+                  {c.options.map((o) => (
+                    <li key={o}>{o}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           ))}
         </div>
@@ -53,17 +57,23 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
         ))}
       </div>
 
-      <p className="small muted" style={{ marginBottom: 12 }}>
-        About {usd(current.allotted)} of your budget goes here. Ranked on fit alone; vendors can&apos;t pay to move up.
-      </p>
+      <div className="cat-bar">
+        <div>
+          <p className="eyebrow">{CATEGORY_LABELS[current.category]} Budget</p>
+          <p className="small muted" title="Ranked on fit alone. Vendors can't pay to move up.">
+            {Math.round((current.allotted / plan.budget) * 100)}% of {usd(plan.budget)} · Fit-Ranked
+          </p>
+        </div>
+        <span className="big-num">{usd(current.allotted)}</span>
+      </div>
 
       {current.matches.length === 0 ? (
-        <div className="card flat">
-          <p className="muted">No {CATEGORY_LABELS[current.category].toLowerCase()} fit this plan yet.</p>
+        <div className="empty-state" style={{ padding: "48px 24px" }}>
+          <p className="muted">No {CATEGORY_LABELS[current.category]} Matches Yet</p>
         </div>
       ) : (
-        current.matches.map((m) => (
-          <article key={m.vendor.id} className="match">
+        current.matches.map((m, idx) => (
+          <article key={m.vendor.id} className="match" style={{ animationDelay: `${idx * 50}ms` }}>
             <div className="match-visual" aria-hidden>
               {m.vendor.images[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -75,16 +85,17 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
             <div>
               <div className="row" style={{ gap: 8 }}>
                 <h3>
-                  <Link href={`/vendors/${m.vendor.id}?plan=${plan.id}`} style={{ textDecoration: "none" }}>
+                  <Link href={`/vendors/${m.vendor.id}?plan=${plan.id}`}>
                     {m.vendor.name}
                   </Link>
                 </h3>
                 {m.vendor.isDemo && <span className="badge">Sample</span>}
                 {m.vendor.verified && <span className="badge moss">Verified</span>}
               </div>
-              <p className="small muted">
-                {getCity(m.vendor.cityId)?.name} · {m.vendor.styles.map((s) => STYLE_LABELS[s]).join(", ")}
-              </p>
+              <div className="meta" style={{ marginTop: 4 }}>
+                <span>{getCity(m.vendor.cityId)?.name}</span>
+                <span>{m.vendor.styles.slice(0, 3).map((s) => STYLE_LABELS[s]).join(", ")}</span>
+              </div>
               <ul className="why">
                 {m.reasons.map((r) => (
                   <li key={r}>{r}</li>
@@ -95,26 +106,29 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
                   </li>
                 ))}
               </ul>
-              <div className="row" style={{ marginTop: 12, gap: 8 }}>
+              <div className="row" style={{ marginTop: 14, gap: 8 }}>
                 {m.inquiry ? (
                   <span className="badge moss">{m.inquiry === "sent" ? "Asked" : m.inquiry === "replied" ? "Replied" : "Declined"}</span>
                 ) : (
-                  <button className="btn sm thread" onClick={() => setAsking(m)}>
-                    Ask About Your Date
+                  <button className="btn sm accent" onClick={() => setAsking(m)}>
+                    Check Date
                   </button>
                 )}
-                <button className="btn sm ghost" onClick={() => toggleSave(m)}>
-                  {m.saved ? "Saved" : "Save"}
+                <button className="btn sm ghost" aria-pressed={m.saved} onClick={() => toggleSave(m)}>
+                  {m.saved ? "♥ Saved" : "♡ Save"}
                 </button>
               </div>
             </div>
-            <div>
-              <div className="score">
-                {m.score}
-                <small>Fit</small>
-              </div>
-              <div style={{ marginTop: 10, textAlign: "right" }}>
-                <span className={`badge ${FIT_BADGE[m.priceFit]}`}>{FIT_LABEL[m.priceFit]}</span>
+            <div className="side">
+              <Ring value={m.score} size={60} />
+              <div className="cost">
+                <b>
+                  {usd(m.estimatedCost.low)}
+                  {m.estimatedCost.high !== m.estimatedCost.low ? `–${usd(m.estimatedCost.high)}` : ""}
+                </b>
+                <span className={`badge ${FIT_BADGE[m.priceFit]}`} style={{ marginTop: 6 }}>
+                  {FIT_LABEL[m.priceFit]}
+                </span>
               </div>
             </div>
           </article>
@@ -173,22 +187,22 @@ function InquiryDialog({
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
-      <div className="card dialog stack" role="dialog" aria-modal aria-label={`Message ${match.vendor.name}`} onClick={(e) => e.stopPropagation()}>
+      <div className="card pad-lg dialog stack" role="dialog" aria-modal aria-label={`Message ${match.vendor.name}`} onClick={(e) => e.stopPropagation()}>
         <div className="row between">
-          <h3>Ask {match.vendor.name}</h3>
+          <div>
+            <p className="eyebrow">{CATEGORY_LABELS[match.category]}</p>
+            <h2 style={{ marginTop: 4 }}>{match.vendor.name}</h2>
+          </div>
           <Swatches colors={brief.palette.slice(0, 4)} />
         </div>
         <textarea value={msg} onChange={(e) => setMsg(e.target.value)} maxLength={2000} />
-        <p className="small muted">
-          They&apos;ll see your event details, your look, and your {CATEGORY_LABELS[match.category].toLowerCase()} budget. Not your
-          email.
-        </p>
+        <p className="small muted">They see your event, look and budget. Not your email.</p>
         {error && <p className="error">{error}</p>}
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <button className="btn ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn thread" onClick={send} disabled={busy || !msg.trim()}>
+          <button className="btn accent" onClick={send} disabled={busy || !msg.trim()}>
             {busy ? <span className="spinner" /> : null} Send
           </button>
         </div>
