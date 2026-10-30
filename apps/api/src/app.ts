@@ -14,6 +14,7 @@ import { PinterestError } from "./lib/pinterest.js";
 import { authRoutes } from "./routes/auth.js";
 import { pinterestRoutes } from "./routes/pinterest.js";
 import { planRoutes } from "./routes/plans.js";
+import { reportRoutes } from "./routes/report.js";
 import { placeRoutes } from "./routes/places.js";
 import { vendorRoutes } from "./routes/vendors.js";
 
@@ -85,5 +86,6 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(planRoutes);
   await app.register(vendorRoutes);
   await app.register(placeRoutes);
+  await app.register(reportRoutes);
   return app;
 }

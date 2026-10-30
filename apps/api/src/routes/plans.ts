@@ -114,7 +114,7 @@ export function publicVendor(
 const SHARED_PER_CATEGORY = 6;
 
 /** Rank vendors for a plan. Null when the plan has no brief yet. */
-async function rankPlan(plan: Plan) {
+export async function rankPlan(plan: Plan) {
   const brief = readBrief(plan);
   if (!brief) return null;
   const chosen = planFacts(plan);
@@ -146,6 +146,24 @@ async function rankPlan(plan: Plan) {
 }
 
 /** Load a plan the signed-in user owns, or send 404. Never leak other users' plans. */
+/** What anyone outside the plan may see: top matches per category, no budget, inquiries, or owner details. */
+export function sharedPlan(plan: Plan, ranked: NonNullable<Awaited<ReturnType<typeof rankPlan>>>) {
+  return {
+    plan: { name: plan.name, eventType: plan.eventType, date: plan.date, cityId: plan.cityId, guestCount: plan.guestCount },
+    brief: ranked.brief,
+    categories: ranked.categories.map((c) => ({
+      category: c.category,
+      matches: c.matches.slice(0, SHARED_PER_CATEGORY).map(({ vendor, saved, score, reasons }) => ({
+        vendor,
+        saved,
+        score,
+        // Budget lines quote the planner's allotment, which stays private.
+        reasons: reasons.filter((r) => !r.includes(" budget")),
+      })),
+    })),
+  };
+}
+
 export async function ownedPlan(req: FastifyRequest, reply: FastifyReply): Promise<Plan | null> {
   const { id } = idParams.parse(req.params);
   const plan = await prisma.plan.findFirst({ where: { id, userId: req.user!.id } });
@@ -321,20 +339,7 @@ export async function planRoutes(app: FastifyInstance) {
     const plan = await prisma.plan.findUnique({ where: { shareToken: token } });
     const ranked = plan && (await rankPlan(plan));
     if (!plan || !ranked) return reply.code(404).send({ error: "This link is no longer shared" });
-    return {
-      plan: { name: plan.name, eventType: plan.eventType, date: plan.date, cityId: plan.cityId, guestCount: plan.guestCount },
-      brief: ranked.brief,
-      categories: ranked.categories.map((c) => ({
-        category: c.category,
-        matches: c.matches.slice(0, SHARED_PER_CATEGORY).map(({ vendor, saved, score, reasons }) => ({
-          vendor,
-          saved,
-          score,
-          // Budget lines quote the planner's allotment, which the link keeps private.
-          reasons: reasons.filter((r) => !r.includes(" budget")),
-        })),
-      })),
-    };
+    return sharedPlan(plan, ranked);
   });
 
   app.put("/plans/:id/saved/:vendorId", async (req, reply) => {

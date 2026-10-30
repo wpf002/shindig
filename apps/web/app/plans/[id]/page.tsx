@@ -84,6 +84,11 @@ function PlanView() {
           <h1>{plan.name}</h1>
           <div className="row" style={{ gap: 8 }}>
             {plan.brief && <ShareButton plan={plan} onChange={(shareToken) => setPlan({ ...plan, shareToken })} />}
+            {plan.brief && (
+              <a className="btn ghost sm" href={`/api/plans/${plan.id}/report`} download>
+                Download Report
+              </a>
+            )}
             <Link className="btn ghost sm" href={`/plans/${plan.id}/edit`}>
               Edit Plan
             </Link>
