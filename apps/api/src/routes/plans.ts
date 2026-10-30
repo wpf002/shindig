@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma, type Plan, type Vendor } from "@shindig/db";
 import {
   allocateBudget,
+  BASE_ALLOCATION,
+  CATEGORIES,
   briefEditSchema,
   briefSchema,
   findConflicts,
@@ -115,14 +117,19 @@ const SHARED_PER_CATEGORY = 6;
 async function rankPlan(plan: Plan) {
   const brief = readBrief(plan);
   if (!brief) return null;
-  const facts = planFacts(plan);
+  const chosen = planFacts(plan);
+  // Rank every category this event type uses, so the city's full supply shows up. The plan's own picks come first.
+  const offered = CATEGORIES.filter((c) => c in BASE_ALLOCATION[chosen.eventType] && !chosen.categories.includes(c));
+  const facts = { ...chosen, categories: [...chosen.categories, ...offered] };
   const vendors = await prisma.vendor.findMany({
     where: { active: true, category: { in: facts.categories } },
     include: { images: { take: 3, orderBy: { createdAt: "asc" } } },
   });
   const { allocation, byCategory } = rankMatches(facts, brief, vendors.map(vendorFacts));
-  const counts = Object.fromEntries(facts.categories.map((c) => [c, byCategory[c]?.length ?? 0]));
-  const conflicts = findConflicts(facts, brief, counts);
+  // Extra categories only show when the city has a match for them.
+  facts.categories = facts.categories.filter((c) => chosen.categories.includes(c) || (byCategory[c]?.length ?? 0) > 0);
+  const counts = Object.fromEntries(chosen.categories.map((c) => [c, byCategory[c]?.length ?? 0]));
+  const conflicts = findConflicts(chosen, brief, counts);
   const saved = await prisma.savedVendor.findMany({ where: { planId: plan.id }, select: { vendorId: true } });
   const savedSet = new Set(saved.map((s) => s.vendorId));
   const byId = new Map(vendors.map((v) => [v.id, v]));
