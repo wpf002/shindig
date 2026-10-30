@@ -244,7 +244,7 @@ h3{font:600 1.05rem/1.3 var(--sans);margin:0}
 .facts>div+div{border-left:1px solid var(--line)}
 .facts dt{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--smoke);font-weight:600}
 .facts dd{margin:2px 0 0;font-weight:600}
-.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:32px;margin-top:36px;align-items:start}
+.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:32px;margin-top:36px;align-items:stretch}
 .grid>*{min-width:0}
 .look{background:var(--veil);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;overflow:hidden}
 .swatch-strip{display:flex;height:76px;border-radius:var(--r);overflow:hidden;margin-top:12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
