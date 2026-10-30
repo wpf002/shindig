@@ -79,7 +79,12 @@ function PlanView() {
         <Link href="/plans" className="back">
           ← Plans
         </Link>
-        <h1 style={{ marginTop: 10 }}>{plan.name}</h1>
+        <div className="plan-title">
+          <h1>{plan.name}</h1>
+          <Link className="btn ghost sm" href={`/plans/${plan.id}/edit`}>
+            Edit Plan
+          </Link>
+        </div>
         <dl className="facts">
           {facts.map(([k, v]) => (
             <div key={k}>

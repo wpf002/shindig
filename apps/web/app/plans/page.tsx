@@ -50,7 +50,8 @@ export default function Plans() {
       ) : (
         <div className="plan-list">
           {plans.map((p) => (
-            <Link key={p.id} href={`/plans/${p.id}`} className="card plan-row">
+            <div key={p.id} className="plan-item">
+            <Link href={`/plans/${p.id}`} className="card plan-row">
               <span className={p.brief ? "bar" : "bar empty"}>
                 {p.brief?.palette.map((c) => <i key={c} style={{ background: c }} />)}
               </span>
@@ -79,6 +80,10 @@ export default function Plans() {
                 →
               </span>
             </Link>
+            <Link href={`/plans/${p.id}/edit`} className="plan-edit linkish small">
+              Edit
+            </Link>
+            </div>
           ))}
         </div>
       )}

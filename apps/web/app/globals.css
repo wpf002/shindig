@@ -470,3 +470,7 @@ input[type="date"] { color-scheme: light; accent-color: var(--accent); }
 .board-link { display: flex; gap: var(--s2); margin-bottom: var(--s3); }
 .board-link input { flex: 1; min-width: 0; }
 .board-link .btn { flex: none; }
+.plan-title { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); margin-top: 10px; flex-wrap: wrap; }
+.plan-title .btn { margin-bottom: 8px; }
+.plan-item { position: relative; }
+.plan-edit { position: absolute; top: 50%; right: 84px; transform: translateY(-50%); }
