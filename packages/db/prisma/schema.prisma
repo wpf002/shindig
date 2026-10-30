@@ -74,6 +74,8 @@ model Plan {
   brief       Json?
   briefSource String?
   briefLabel  String?
+  /// Set when the planner shares a read-only link to the results.
+  shareToken  String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -127,6 +129,8 @@ model VendorImage {
   fileName  String   @unique
   width     Int
   height    Int
+  /// Author and license for sample photos pulled from Wikimedia Commons.
+  credit    String?
   createdAt DateTime @default(now())
   vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 

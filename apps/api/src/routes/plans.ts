@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma, type Plan, type Vendor } from "@shindig/db";
 import {
@@ -53,7 +54,9 @@ export function vendorFacts(v: Vendor): VendorFacts {
   };
 }
 
-export function publicVendor(v: Vendor & { images?: Array<{ id: string; fileName: string; width: number; height: number }> }) {
+export function publicVendor(
+  v: Vendor & { images?: Array<{ id: string; fileName: string; width: number; height: number; credit?: string | null }> },
+) {
   return {
     id: v.id,
     slug: v.slug,
@@ -75,8 +78,37 @@ export function publicVendor(v: Vendor & { images?: Array<{ id: string; fileName
     website: v.website,
     isDemo: v.isDemo,
     verified: v.verified,
-    images: (v.images ?? []).map((i) => ({ id: i.id, url: `/api/images/${i.fileName}`, width: i.width, height: i.height })),
+    images: (v.images ?? []).map((i) => ({ id: i.id, url: `/api/images/${i.fileName}`, width: i.width, height: i.height, credit: i.credit ?? null })),
   };
+}
+
+const SHARED_PER_CATEGORY = 6;
+
+/** Rank vendors for a plan. Null when the plan has no brief yet. */
+async function rankPlan(plan: Plan) {
+  const brief = readBrief(plan);
+  if (!brief) return null;
+  const facts = planFacts(plan);
+  const vendors = await prisma.vendor.findMany({
+    where: { active: true, category: { in: facts.categories } },
+    include: { images: { take: 3, orderBy: { createdAt: "asc" } } },
+  });
+  const { allocation, byCategory } = rankMatches(facts, brief, vendors.map(vendorFacts));
+  const counts = Object.fromEntries(facts.categories.map((c) => [c, byCategory[c]?.length ?? 0]));
+  const conflicts = findConflicts(facts, brief, counts);
+  const saved = await prisma.savedVendor.findMany({ where: { planId: plan.id }, select: { vendorId: true } });
+  const savedSet = new Set(saved.map((s) => s.vendorId));
+  const byId = new Map(vendors.map((v) => [v.id, v]));
+  const categories = facts.categories.map((c) => ({
+    category: c,
+    allotted: allocation[c] ?? 0,
+    matches: (byCategory[c] ?? []).map((m) => ({
+      ...m,
+      vendor: publicVendor(byId.get(m.vendorId)!),
+      saved: savedSet.has(m.vendorId),
+    })),
+  }));
+  return { brief, conflicts, categories };
 }
 
 /** Load a plan the signed-in user owns, or send 404. Never leak other users' plans. */
@@ -221,37 +253,54 @@ export async function planRoutes(app: FastifyInstance) {
   app.get("/plans/:id/matches", async (req, reply) => {
     const plan = await ownedPlan(req, reply);
     if (!plan) return;
-    const brief = readBrief(plan);
-    if (!brief) return reply.code(409).send({ error: "Add inspiration first" });
+    const ranked = await rankPlan(plan);
+    if (!ranked) return reply.code(409).send({ error: "Add inspiration first" });
 
-    const facts = planFacts(plan);
-    const vendors = await prisma.vendor.findMany({
-      where: { active: true, category: { in: facts.categories } },
-      include: { images: { take: 3, orderBy: { createdAt: "asc" } } },
-    });
-    const { allocation, byCategory } = rankMatches(facts, brief, vendors.map(vendorFacts));
-    const counts = Object.fromEntries(facts.categories.map((c) => [c, byCategory[c]?.length ?? 0]));
-    const conflicts = findConflicts(facts, brief, counts);
-
-    const [saved, inquiries] = await Promise.all([
-      prisma.savedVendor.findMany({ where: { planId: plan.id }, select: { vendorId: true } }),
-      prisma.inquiry.findMany({ where: { planId: plan.id }, select: { vendorId: true, status: true } }),
-    ]);
-    const savedSet = new Set(saved.map((s) => s.vendorId));
+    const inquiries = await prisma.inquiry.findMany({ where: { planId: plan.id }, select: { vendorId: true, status: true } });
     const inquiryBy = new Map(inquiries.map((i) => [i.vendorId, i.status]));
-    const byId = new Map(vendors.map((v) => [v.id, v]));
-
-    const categories = facts.categories.map((c) => ({
-      category: c,
-      allotted: allocation[c] ?? 0,
-      matches: (byCategory[c] ?? []).map((m) => ({
-        ...m,
-        vendor: publicVendor(byId.get(m.vendorId)!),
-        saved: savedSet.has(m.vendorId),
-        inquiry: inquiryBy.get(m.vendorId) ?? null,
-      })),
+    const categories = ranked.categories.map((c) => ({
+      ...c,
+      matches: c.matches.map((m) => ({ ...m, inquiry: inquiryBy.get(m.vendorId) ?? null })),
     }));
-    return { brief, conflicts, categories };
+    return { brief: ranked.brief, conflicts: ranked.conflicts, categories };
+  });
+
+  app.post("/plans/:id/share", async (req, reply) => {
+    const plan = await ownedPlan(req, reply);
+    if (!plan) return;
+    if (plan.shareToken) return { shareToken: plan.shareToken };
+    const shareToken = randomBytes(18).toString("base64url");
+    await prisma.plan.update({ where: { id: plan.id }, data: { shareToken } });
+    return { shareToken };
+  });
+
+  app.delete("/plans/:id/share", async (req, reply) => {
+    const plan = await ownedPlan(req, reply);
+    if (!plan) return;
+    await prisma.plan.update({ where: { id: plan.id }, data: { shareToken: null } });
+    return reply.code(204).send();
+  });
+
+  // Read-only results for anyone with the link. No budget, inquiries, or owner details.
+  app.get("/share/:token", async (req, reply) => {
+    const { token } = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{24}$/) }).parse(req.params);
+    const plan = await prisma.plan.findUnique({ where: { shareToken: token } });
+    const ranked = plan && (await rankPlan(plan));
+    if (!plan || !ranked) return reply.code(404).send({ error: "This link is no longer shared" });
+    return {
+      plan: { name: plan.name, eventType: plan.eventType, date: plan.date, cityId: plan.cityId, guestCount: plan.guestCount },
+      brief: ranked.brief,
+      categories: ranked.categories.map((c) => ({
+        category: c.category,
+        matches: c.matches.slice(0, SHARED_PER_CATEGORY).map(({ vendor, saved, score, reasons }) => ({
+          vendor,
+          saved,
+          score,
+          // Budget lines quote the planner's allotment, which the link keeps private.
+          reasons: reasons.filter((r) => !r.includes(" budget")),
+        })),
+      })),
+    };
   });
 
   app.put("/plans/:id/saved/:vendorId", async (req, reply) => {

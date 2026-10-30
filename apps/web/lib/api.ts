@@ -40,6 +40,7 @@ export interface Plan {
   brief: Brief | null;
   briefSource: "pinterest" | "upload" | null;
   briefLabel: string | null;
+  shareToken: string | null;
   updatedAt: string;
 }
 
@@ -64,7 +65,7 @@ export interface PublicVendor {
   website: string | null;
   isDemo: boolean;
   verified: boolean;
-  images: Array<{ id: string; url: string; width: number; height: number }>;
+  images: Array<{ id: string; url: string; width: number; height: number; credit: string | null }>;
 }
 
 export interface MatchRow extends Match {
@@ -80,3 +81,12 @@ export interface MatchesResponse {
 }
 
 export const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+
+export interface SharedPlan {
+  plan: Pick<Plan, "name" | "eventType" | "date" | "cityId" | "guestCount">;
+  brief: Brief;
+  categories: Array<{
+    category: Category;
+    matches: Array<Pick<MatchRow, "vendor" | "saved" | "score" | "reasons">>;
+  }>;
+}

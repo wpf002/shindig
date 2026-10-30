@@ -77,7 +77,7 @@ export function BriefPanel({
   );
 
   return (
-    <div className="card brief sticky" style={{ maxHeight: "calc(100vh - 104px)", overflowY: "auto" }}>
+    <div className="card brief">
       <section>
         <div className="panel-title">
           <p className="eyebrow">Your Look</p>

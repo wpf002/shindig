@@ -298,8 +298,10 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .facts > div + div { border-left: 1px solid var(--line); }
 .facts dt { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--smoke); font-weight: 600; }
 .facts dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-.plan-grid { display: grid; grid-template-columns: 380px 1fr; gap: var(--s6); align-items: start; padding-bottom: var(--s9); }
+.plan-grid { display: grid; grid-template-columns: 380px 1fr; gap: var(--s6); align-items: stretch; padding-bottom: var(--s9); }
 .sticky { position: sticky; top: 84px; }
+.plan-aside { display: flex; flex-direction: column; }
+.plan-aside > .brief { flex: 1; }
 
 .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: var(--s4); }
 .tabs::-webkit-scrollbar { display: none; }
@@ -315,8 +317,13 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .match { display: grid; grid-template-columns: 132px 1fr auto; gap: var(--s5); padding: var(--s4); border-radius: var(--r-lg); background: var(--veil); border: 1px solid var(--line); transition: box-shadow .2s, border-color .2s, transform .2s var(--ease); animation: rise .6s var(--ease) both; }
 .match:hover { box-shadow: var(--shadow); border-color: var(--line-2); }
 .match + .match { margin-top: var(--s3); }
-.match-visual { width: 132px; height: 132px; border-radius: var(--r); overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; background: var(--paper-2); }
-.match-visual img { width: 132px; height: 132px; object-fit: cover; grid-column: 1 / -1; }
+.match-visual { position: relative; width: 132px; height: 132px; border-radius: var(--r); overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; background: var(--paper-2); }
+.match-visual img { width: 132px; height: 132px; object-fit: cover; grid-column: 1 / -1; grid-row: 1 / span 2; }
+.photo-count { position: absolute; left: 6px; bottom: 6px; font-size: .66rem; font-weight: 600; letter-spacing: .04em; color: #fff; background: rgba(20,20,20,.55); padding: 2px 7px; border-radius: 999px; }
+.share-box { display: flex; gap: var(--s2); }
+.share-box input { flex: 1; font-size: .85rem; }
+.share-head { padding: var(--s7) 0 var(--s5); }
+.share-head .eyebrow { margin-bottom: var(--s2); }
 .match h3 a { text-decoration: none; }
 .match h3 a:hover { color: var(--accent-ink); }
 .match .side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: var(--s3); }

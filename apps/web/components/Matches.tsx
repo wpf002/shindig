@@ -11,12 +11,27 @@ import {
   type Category,
   type EventType,
 } from "@shindig/core";
-import { api, usd, type MatchesResponse, type MatchRow, type Plan } from "@/lib/api";
+import { api, usd, type MatchesResponse, type MatchRow, type Plan, type PublicVendor } from "@/lib/api";
 import { Swatches } from "./Swatches";
 import { Ring } from "./Ring";
 
 const FIT_LABEL = { under: "Under Budget", within: "In Budget", stretch: "A Stretch", over: "Over Budget" } as const;
 const FIT_BADGE = { under: "moss", within: "moss", stretch: "amber", over: "accent" } as const;
+
+export function MatchVisual({ vendor }: { vendor: PublicVendor }) {
+  const img = vendor.images[0];
+  return (
+    <div className="match-visual" title={img?.credit ?? undefined}>
+      {img ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={img.url} alt={vendor.name} loading="lazy" />
+      ) : (
+        vendor.palette.slice(0, 4).map((c, i) => <div key={i} style={{ background: c }} aria-hidden />)
+      )}
+      {vendor.images.length > 1 && <span className="photo-count">{vendor.images.length} Photos</span>}
+    </div>
+  );
+}
 
 export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesResponse; onChange: () => void }) {
   const [tab, setTab] = useState<Category>(data.categories[0]!.category);
@@ -74,14 +89,7 @@ export function Matches({ plan, data, onChange }: { plan: Plan; data: MatchesRes
       ) : (
         current.matches.map((m, idx) => (
           <article key={m.vendor.id} className="match" style={{ animationDelay: `${idx * 50}ms` }}>
-            <div className="match-visual" aria-hidden>
-              {m.vendor.images[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.vendor.images[0].url} alt="" />
-              ) : (
-                m.vendor.palette.slice(0, 4).map((c, i) => <div key={i} style={{ background: c }} />)
-              )}
-            </div>
+            <MatchVisual vendor={m.vendor} />
             <div>
               <div className="row" style={{ gap: 8 }}>
                 <h3>

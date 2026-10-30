@@ -10,6 +10,7 @@ import { Inspiration } from "@/components/Inspiration";
 import { BriefPanel } from "@/components/BriefPanel";
 import { Matches } from "@/components/Matches";
 import { InquiryList } from "@/components/InquiryList";
+import { ShareButton } from "@/components/ShareButton";
 
 const PIN_NOTICE: Record<string, string> = {
   connected: "Pinterest is connected. Pick a board.",
@@ -81,9 +82,12 @@ function PlanView() {
         </Link>
         <div className="plan-title">
           <h1>{plan.name}</h1>
-          <Link className="btn ghost sm" href={`/plans/${plan.id}/edit`}>
-            Edit Plan
-          </Link>
+          <div className="row" style={{ gap: 8 }}>
+            {plan.brief && <ShareButton plan={plan} onChange={(shareToken) => setPlan({ ...plan, shareToken })} />}
+            <Link className="btn ghost sm" href={`/plans/${plan.id}/edit`}>
+              Edit Plan
+            </Link>
+          </div>
         </div>
         <dl className="facts">
           {facts.map(([k, v]) => (
@@ -109,7 +113,7 @@ function PlanView() {
         </div>
       ) : (
         <div className="plan-grid">
-          <aside className="stack">
+          <aside className="stack plan-aside">
             <BriefPanel plan={plan} onSaved={onBrief} onReplace={() => setReplacing(true)} />
             <InquiryList planId={plan.id} version={matches} />
           </aside>
