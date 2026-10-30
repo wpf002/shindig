@@ -298,10 +298,16 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .facts > div + div { border-left: 1px solid var(--line); }
 .facts dt { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--smoke); font-weight: 600; }
 .facts dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-.plan-grid { display: grid; grid-template-columns: 380px 1fr; gap: var(--s6); align-items: stretch; padding-bottom: var(--s9); }
+.plan-grid { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: var(--s6); align-items: stretch; padding-bottom: var(--s9); }
 .sticky { position: sticky; top: 84px; }
+.plan-grid > * { min-width: 0; }
 .plan-aside { display: flex; flex-direction: column; }
-.plan-aside > .brief { flex: 1; }
+.plan-aside > * { flex-shrink: 0; }
+.plan-aside > .brief { flex: 1 0 auto; }
+/* The match list sets the row height. The panel fills it and scrolls when it's longer. */
+@media (min-width: 1001px) {
+  .plan-aside { contain: size; min-height: 640px; overflow-y: auto; scrollbar-width: thin; }
+}
 
 .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: var(--s4); }
 .tabs::-webkit-scrollbar { display: none; }
@@ -351,7 +357,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .conflict .icon { width: 28px; height: 28px; border-radius: 50%; background: var(--amber); color: var(--veil); display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
 .conflict ul { margin: 6px 0 0; padding-left: 18px; font-size: .9rem; }
 
-.brief { padding: 0; overflow: hidden; }
+.brief { padding: 0; overflow: clip; }
 .brief > section { padding: var(--s5); }
 .brief > section + section { border-top: 1px solid var(--line); }
 .brief .summary { font-family: var(--display); font-size: 1.2rem; line-height: 1.35; font-style: italic; font-variation-settings: "SOFT" 100, "WONK" 0; }
@@ -446,7 +452,12 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   .intake { grid-template-columns: 1fr; }
   .match { grid-template-columns: 76px 1fr; }
   .match-visual, .match-visual img { width: 76px; height: 76px; }
-  .match .side { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+  .match { row-gap: 0; }
+  .match-body { display: contents; }
+  .match-body > * { grid-column: 2; min-width: 0; }
+  .match-visual { grid-row: 1 / span 3; }
+  .match-actions { grid-column: 1 / -1; }
+  .match .side { grid-column: 1 / -1; flex-direction: row; align-items: center; margin-top: 14px; }
   .facts > div { padding: 8px 14px; }
   .gallery { grid-template-columns: 1fr 1fr; grid-template-rows: 160px 120px; }
   .gallery.swatch-only { height: 140px; }
